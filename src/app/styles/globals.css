@@ -1,0 +1,391 @@
+﻿@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   1. Tailwind v4 Directives & CSS Custom Properties (Theme Tokens)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --background: #fcfdfc;
+  --foreground: #121814;
+  --primary-green: #15803d;
+  --primary-dark: #14532d;
+  --primary-light: #e8f5e9;
+  --muted: #64748b;
+  --panel-bg: #ffffff;
+  --border-color: #e2e8f0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-brand-primary: var(--primary-green);
+  --color-brand-dark: var(--primary-dark);
+  --color-brand-light: var(--primary-light);
+
+  --color-muted-text: var(--muted);
+  --color-panel: var(--panel-bg);
+  --color-line: var(--border-color);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Newsreader", "Playfair Display", "Charter", "Georgia", "Cambria", serif;
+  /* System mono — avoids shipping an unused second webfont (Geist Mono) */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   2. Global Base Resets & Document Defaults
+   ───────────────────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   3. Custom Scrollbars & Global UI Utilities
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Global WebKit scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted);
+}
+
+/* Scrollbar hide utility across Chrome, Safari, Edge, and Firefox */
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Brand hero gradient utility */
+@utility bg-hero {
+  background: linear-gradient(160deg, #f0fdf4 0%, #dcfce7 35%, #fcfdfc 70%);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   4. Third-Party Plugin Overrides & Global Enhancements
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Toast container positioning guard */
+[data-hot-toast] {
+  z-index: 9999 !important;
+}
+
+/* Print utility */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   5. Keyframes & Custom Animations
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Floating animation */
+@keyframes urban-nursery-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes planto-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-urban-nursery-float,
+.animate-planto-float {
+  animation: urban-nursery-float 3s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-urban-nursery-float-delay,
+.animate-planto-float-delay {
+  animation: urban-nursery-float 3s ease-in-out 1.5s infinite;
+  will-change: transform;
+}
+
+/* Soft pulse animation */
+@keyframes urban-nursery-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes planto-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-urban-nursery-pulse,
+.animate-planto-pulse {
+  animation: urban-nursery-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Plant Loader SVG animations */
+@keyframes growStem {
+  0% {
+    stroke-dasharray: 20;
+    stroke-dashoffset: 20;
+  }
+  50%, 100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes leafWiggleLeft {
+  0%, 100% {
+    transform: scale(0.8) rotate(-8deg);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.05) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes leafWiggleRight {
+  0%, 100% {
+    transform: scale(0.8) rotate(8deg);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.05) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* Marquee infinite ticker */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 25s linear infinite;
+}
+
+/* Accessibility: Respect users with reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* ─────────────────────────────────────────────────────────────────────────────
+   6. Editorial Botanical Typography (Magazine / Longform Publication)
+   ───────────────────────────────────────────────────────────────────────────── */
+.prose-botanical {
+  color: #292524;
+  font-size: 1.125rem;
+  line-height: 1.85;
+  letter-spacing: -0.011em;
+}
+
+@media (min-width: 640px) {
+  .prose-botanical {
+    font-size: 1.25rem;
+    line-height: 1.85;
+  }
+}
+
+.prose-botanical p {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #292524;
+}
+
+.prose-botanical h2 {
+  font-family: var(--font-serif);
+  font-size: 1.875rem;
+  line-height: 1.25;
+  color: #1c1917;
+  font-weight: 700;
+  margin-top: 3rem;
+  margin-bottom: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f5f5f4;
+  scroll-margin-top: 6rem;
+}
+
+@media (min-width: 640px) {
+  .prose-botanical h2 {
+    font-size: 2.25rem;
+  }
+}
+
+.prose-botanical h3 {
+  font-family: var(--font-serif);
+  font-size: 1.375rem;
+  line-height: 1.35;
+  color: #292524;
+  font-weight: 600;
+  margin-top: 2.25rem;
+  margin-bottom: 0.875rem;
+  scroll-margin-top: 6rem;
+}
+
+@media (min-width: 640px) {
+  .prose-botanical h3 {
+    font-size: 1.625rem;
+  }
+}
+
+.prose-botanical blockquote {
+  position: relative;
+  border-left: 4px solid #059669;
+  background-color: rgba(236, 253, 245, 0.6);
+  padding: 1.5rem 1.75rem;
+  border-top-right-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+  font-style: italic;
+  font-family: var(--font-serif);
+  font-size: 1.1875rem;
+  line-height: 1.7;
+  color: #1c1917;
+  margin: 2.25rem 0;
+}
+
+.prose-botanical ul {
+  list-style-type: disc;
+  padding-left: 1.75rem;
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.prose-botanical ol {
+  list-style-type: decimal;
+  padding-left: 1.75rem;
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.prose-botanical li {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 0.25rem;
+}
+
+.prose-botanical li::marker {
+  color: #059669;
+}
+
+.prose-botanical a {
+  color: #047857;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.prose-botanical a:hover {
+  color: #065f46;
+}
+
+.prose-botanical img {
+  border-radius: 1.25rem;
+  margin: 2.5rem auto;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.06);
+  max-width: 100%;
+  height: auto;
+}
+
+.prose-botanical table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2.5rem 0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid #e7e5e4;
+  font-size: 0.95rem;
+}
+
+.prose-botanical thead {
+  background-color: #f0fdf4;
+}
+
+.prose-botanical th {
+  padding: 0.875rem 1rem;
+  text-align: left;
+  font-weight: 700;
+  color: #065f46;
+  border-bottom: 2px solid #d1fae5;
+}
+
+.prose-botanical td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid #f5f5f4;
+  color: #44403c;
+}
+
+.prose-botanical tr:nth-child(even) {
+  background-color: #fafaf9;
+}
+
+.prose-botanical code {
+  background-color: #f5f5f4;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.375rem;
+  font-size: 0.875em;
+  font-family: var(--font-mono);
+  color: #065f46;
+}

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%">
+  <!-- Premium iOS-style Squircle Smooth Background -->
+  <rect width="64" height="64" rx="18" fill="#1E4620" />
+  
+  <!-- Subtle Inner Glow Ring for Premium Depth -->
+  <rect x="2" y="2" width="60" height="60" rx="16" stroke="#D1E7DD" stroke-width="1" fill="none" opacity="0.15" />
+
+  <!-- The Iconography Element (Centered Perfectly) -->
+  <g transform="translate(14, 11)">
+    <!-- Minimalist Geometric Leaf (Angled for Growth Vibe) -->
+    <path d="M 18,5 C 8,15 12,28 18,28 C 18,28 18,5 18,5 Z" fill="#D1E7DD" />
+    <path d="M 18,5 C 28,15 24,28 18,28 C 18,28 18,5 18,5 Z" fill="#E8F5E9" />
+    
+    <!-- Premium Designer Clay Pot -->
+    <path d="M 6,29 L 30,29 L 26,44 L 10,44 Z" fill="#D35400" />
+    <!-- Pot Rim -->
+    <rect x="4" y="26" width="28" height="4" rx="1.5" fill="#E67E22" />
+  </g>
+</svg>

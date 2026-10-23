@@ -1,0 +1,74 @@
+# ======================================================================
+# 📦 DEPENDENCIES & PACKAGE MANAGERS
+# ======================================================================
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+shrinkwrap.yaml
+
+# ======================================================================
+# 🚀 NEXT.JS BUILD & CACHE OUTPUTS
+# ======================================================================
+/.next/
+/out/
+/build
+/dist
+.cache/
+
+# ======================================================================
+# 🛡️ SECURITY & SENSITIVE ENVIRONMENT VARIABLES (Crucial Guard)
+# ======================================================================
+.env
+.env.*
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+*.env
+*.env.local
+!.env.example
+*.pem
+*.key
+*.cert
+
+# ======================================================================
+# 💻 IDEs & LOCAL EDITORS CONFIGURATIONS (Prevents Team Conflict)
+# ======================================================================
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# ======================================================================
+# 📊 TESTING, COVERAGE, & LOGS
+# ======================================================================
+/coverage
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ======================================================================
+# ⚙️ SYSTEM & DEPLOYMENT MANAGEMENT (Vercel / Docker)
+# ======================================================================
+.vercel
+.turbo
+*.tsbuildinfo
+next-env.d.ts
