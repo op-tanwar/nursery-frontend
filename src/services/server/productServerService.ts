@@ -9,7 +9,7 @@ import { cache } from "react";
 import { determineProductTag } from "@/utils/productBadge";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://planto-backend-mpdo.onrender.com/api/v1";
+  process.env.NEXT_PUBLIC_API_URL || "https://nursery-backend-2rg3.onrender.com/api/v1";
 
 export type ShopUrlType =
   | "plants"
@@ -247,8 +247,8 @@ export const resolveProductServer = cache(async function resolveProductServer(
       raw.isOrganic !== undefined
         ? raw.isOrganic
         : raw.description?.includes("Organic") || raw.name?.toLowerCase().includes("organic")
-        ? true
-        : undefined;
+          ? true
+          : undefined;
     const maxLoadMatch = raw.description?.match(/Max weight capacity:\s*([^\n]+)/i)?.[1]?.trim();
 
     return {

@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 7200; // 2 hours
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://planto-backend-mpdo.onrender.com/api/v1";
+  process.env.NEXT_PUBLIC_API_URL || "https://nursery-backend-2rg3.onrender.com/api/v1";
 
 interface VendorItem {
   slug: string;
@@ -61,16 +61,16 @@ export async function GET() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${vendors
-  .map((v) => {
-    const lastmod = v.updatedAt ? new Date(v.updatedAt).toISOString().split("T")[0] : fallbackDate;
-    return `  <url>
+      .map((v) => {
+        const lastmod = v.updatedAt ? new Date(v.updatedAt).toISOString().split("T")[0] : fallbackDate;
+        return `  <url>
     <loc>${SITE_URL}/vendor/${v.slug}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>`;
-  })
-  .join("\n")}
+      })
+      .join("\n")}
 </urlset>`;
 
   return new Response(xml, {

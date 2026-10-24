@@ -9,7 +9,7 @@ const API_BASE_URL = (() => {
   const resolved =
     process.env.NEXT_PUBLIC_API_URL ||
     process.env.API_URL ||
-    "https://planto-backend-mpdo.onrender.com/api/v1";
+    "https://nursery-backend-2rg3.onrender.com/api/v1";
   // Trim trailing slash so URL concat never produces double slashes
   const clean = resolved.replace(/\/+$/, "");
   console.log("[catalogServerService] Resolved API_BASE_URL:", clean);

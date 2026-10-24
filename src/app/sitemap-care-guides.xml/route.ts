@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 7200; // 2 hours
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://planto-backend-mpdo.onrender.com/api/v1";
+  process.env.NEXT_PUBLIC_API_URL || "https://nursery-backend-2rg3.onrender.com/api/v1";
 
 interface GuideItem {
   slug: string;
@@ -62,16 +62,16 @@ export async function GET() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${guides
-  .map((g) => {
-    const lastmod = g.updatedAt ? new Date(g.updatedAt).toISOString().split("T")[0] : fallbackDate;
-    return `  <url>
+      .map((g) => {
+        const lastmod = g.updatedAt ? new Date(g.updatedAt).toISOString().split("T")[0] : fallbackDate;
+        return `  <url>
     <loc>${SITE_URL}/blogs/${g.slug}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>`;
-  })
-  .join("\n")}
+      })
+      .join("\n")}
 </urlset>`;
 
   return new Response(xml, {

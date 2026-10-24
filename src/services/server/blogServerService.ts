@@ -10,7 +10,7 @@ const getApiBaseUrl = (): string => {
   const resolved =
     process.env.NEXT_PUBLIC_API_URL ||
     process.env.API_URL ||
-    "https://planto-backend-mpdo.onrender.com/api/v1";
+    "https://nursery-backend-2rg3.onrender.com/api/v1";
   return resolved.replace(/\/+$/, "");
 };
 

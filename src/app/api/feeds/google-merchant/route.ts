@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 3600; // 1 hour
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://planto-backend-mpdo.onrender.com/api/v1";
+  process.env.NEXT_PUBLIC_API_URL || "https://nursery-backend-2rg3.onrender.com/api/v1";
 
 interface FeedProduct {
   id: string;
@@ -131,8 +131,8 @@ export async function GET() {
     <link>${SITE_URL}</link>
     <description>Automated Google Merchant Center Product Feed for Urban Nursery India.</description>
 ${items
-  .map(
-    (item) => `    <item>
+      .map(
+        (item) => `    <item>
       <g:id>${escapeXml(item.id)}</g:id>
       <g:title>${escapeXml(item.title)}</g:title>
       <g:description>${escapeXml(item.description)}</g:description>
@@ -144,8 +144,8 @@ ${items
       <g:google_product_category>${escapeXml(item.googleProductCategory)}</g:google_product_category>
       <g:condition>new</g:condition>
     </item>`
-  )
-  .join("\n")}
+      )
+      .join("\n")}
   </channel>
 </rss>`;
 
