@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export const SITE_URL: string = (
-  process.env.NEXT_PUBLIC_SITE_URL || "https://urbannursery.vercel.app"
+  process.env.NEXT_PUBLIC_SITE_URL || "https://urbannursery-neon.vercel.app"
 ).replace(/\/+$/, "");
 
 const parsedSiteUrl = new URL(SITE_URL.startsWith("http") ? SITE_URL : `https://${SITE_URL}`);

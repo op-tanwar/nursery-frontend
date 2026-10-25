@@ -4,7 +4,7 @@
  */
 
 export const SITE_URL: string = (
-  process.env.NEXT_PUBLIC_SITE_URL || "https://urbannursery.vercel.app"
+  process.env.NEXT_PUBLIC_SITE_URL || "https://urbannursery-neon.vercel.app"
 ).replace(/\/+$/, "");
 
 export const SITE_NAME = "Urban Nursery";
