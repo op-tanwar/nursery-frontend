@@ -18,6 +18,12 @@ import {
   Save,
   AlertCircle,
 } from "lucide-react";
+import {
+  ProductGalleryManager,
+  IGalleryImageItem,
+  IStagedGalleryFile,
+} from "@/components/nursery/ProductGalleryManager";
+
 
 const ARTIFICIAL_CATEGORIES = [
   "Artificial Plants",
@@ -77,6 +83,10 @@ export default function EditArtificialDriedPlantPage() {
   const [coverPreview, setCoverPreview] = useState<string>("");
   const [existingCoverUrl, setExistingCoverUrl] = useState<string>("");
 
+  // Gallery Management States
+  const [existingGalleryImages, setExistingGalleryImages] = useState<IGalleryImageItem[]>([]);
+  const [stagedGalleryFiles, setStagedGalleryFiles] = useState<IStagedGalleryFile[]>([]);
+
   // Gallery Images State
   const [existingGallery, setExistingGallery] = useState<GalleryImageItem[]>([]);
   const [newGalleryImages, setNewGalleryImages] = useState<File[]>([]);
@@ -114,6 +124,7 @@ export default function EditArtificialDriedPlantPage() {
         }
 
         setExistingCoverUrl(plant.coverImage?.url || "");
+        setExistingGalleryImages(Array.isArray(plant.images) ? plant.images : []);
         if (plant.images && Array.isArray(plant.images)) {
           setExistingGallery(plant.images);
         }
@@ -136,6 +147,55 @@ export default function EditArtificialDriedPlantPage() {
       newGalleryPreviews.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [coverPreview, newGalleryPreviews]);
+
+  // Clean up object URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (coverPreview && coverPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(coverPreview);
+      }
+      stagedGalleryFiles.forEach((f) => {
+        if (f.previewUrl?.startsWith("blob:")) {
+          URL.revokeObjectURL(f.previewUrl);
+        }
+      });
+    };
+  }, [coverPreview, stagedGalleryFiles]);
+
+  const handleRemoveExistingGalleryImage = (index: number) => {
+    setExistingGalleryImages((prev) => prev.filter((_, i) => i !== index));
+    toast.success("Gallery photo marked for deletion on save.");
+  };
+
+  const handleReplaceExistingGalleryImage = (index: number, newFile: File) => {
+    setExistingGalleryImages((prev) => prev.filter((_, i) => i !== index));
+    const newStaged: IStagedGalleryFile = {
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      file: newFile,
+      previewUrl: URL.createObjectURL(newFile),
+    };
+    setStagedGalleryFiles((prev) => [...prev, newStaged]);
+  };
+
+  const handleAddStagedGalleryFiles = (newFiles: File[]) => {
+    const newItems: IStagedGalleryFile[] = newFiles.map((file) => ({
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+    setStagedGalleryFiles((prev) => [...prev, ...newItems]);
+    toast.success(`Queued ${newFiles.length} new gallery image${newFiles.length === 1 ? "" : "s"}.`);
+  };
+
+  const handleRemoveStagedGalleryFile = (id: string) => {
+    setStagedGalleryFiles((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target?.previewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((item) => item.id !== id);
+    });
+  };
 
   const handleCoverAssignment = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -213,6 +273,15 @@ export default function EditArtificialDriedPlantPage() {
       if (coverImage) {
         formData.append("coverImage", coverImage);
       }
+
+      // Append preserved existing gallery images
+      formData.append("existingImages", JSON.stringify(existingGalleryImages));
+
+      // Append newly staged gallery images (both keys for broad backend compatibility)
+      stagedGalleryFiles.forEach((item) => {
+        formData.append("images", item.file);
+        formData.append("galleryImages", item.file);
+      });
 
       newGalleryImages.forEach((file) => {
         formData.append("images", file);
@@ -495,6 +564,18 @@ export default function EditArtificialDriedPlantPage() {
               />
             </div>
           </div>
+
+        {/* Multi-Angle Showcase Gallery Cluster Management */}
+        <ProductGalleryManager
+          existingImages={existingGalleryImages}
+          onRemoveExisting={handleRemoveExistingGalleryImage}
+          onReplaceExisting={handleReplaceExistingGalleryImage}
+          stagedImages={stagedGalleryFiles}
+          onAddStagedFiles={handleAddStagedGalleryFiles}
+          onRemoveStaged={handleRemoveStagedGalleryFile}
+          maxImages={10}
+          disabled={isLoading}
+        />
 
           {/* Gallery Images */}
           <div className="space-y-3">

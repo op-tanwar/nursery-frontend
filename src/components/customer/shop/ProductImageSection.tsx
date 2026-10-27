@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { Zap, PackageCheck, Sparkles, ShieldCheck } from "lucide-react";
 
@@ -20,7 +20,11 @@ export default function ProductImageSection({
   // Main active image resolution state
   const [activeImage, setActiveImage] = useState<string>(emoji);
 
-  const isImageUrl = (url: string) => url.startsWith("http") || url.startsWith("/");
+  useEffect(() => {
+    setActiveImage(emoji);
+  }, [emoji]);
+
+  const isImageUrl = (url: string) => url?.startsWith("http") || url?.startsWith("/");
 
   // Gallery list compilation (Main image + Extra gallery images)
   const allImages = React.useMemo(() => {

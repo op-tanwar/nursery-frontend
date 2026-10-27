@@ -14,6 +14,11 @@ import {
 import { nurseryService } from "@/services/nurseryService";
 import { plantService } from "@/services/PlantsService";
 import { ArrowLeft, Plus, Trash2, Image as ImageIcon, Loader2, Leaf, Save, AlertCircle } from "lucide-react";
+import {
+  ProductGalleryManager,
+  IGalleryImageItem,
+  IStagedGalleryFile,
+} from "@/components/nursery/ProductGalleryManager";
 
 // Predefined catalog categories for botanical asset mapping
 const AVAILABLE_PLANT_CATEGORIES = [
@@ -62,6 +67,10 @@ export default function EditPlantPage() {
   const [coverPreview, setCoverPreview] = useState<string>("");
   const [existingCoverUrl, setExistingCoverUrl] = useState<string>("");
 
+  // Gallery Management States
+  const [existingGalleryImages, setExistingGalleryImages] = useState<IGalleryImageItem[]>([]);
+  const [stagedGalleryFiles, setStagedGalleryFiles] = useState<IStagedGalleryFile[]>([]);
+
   useEffect(() => {
     const fetchPlantDataNode = async () => {
       dispatch(setNurseryLoading(true));
@@ -98,6 +107,9 @@ export default function EditPlantPage() {
         setMetaTitle(targetedPlant.metaTitle || "");
         setMetaDescription(targetedPlant.metaDescription || "");
         setExistingCoverUrl(targetedPlant.coverImage?.url || "");
+        setExistingGalleryImages(
+          Array.isArray(targetedPlant.images) ? targetedPlant.images : []
+        );
 
         if (targetedPlant.descriptionOption?.points?.length) setPoints(targetedPlant.descriptionOption.points);
         if (targetedPlant.benefits?.length) setBenefits(targetedPlant.benefits);
@@ -130,6 +142,55 @@ export default function EditPlantPage() {
     if (type === "points" && points.length > 1) setPoints(points.filter((_, i) => i !== index));
     if (type === "benefits" && benefits.length > 1) setBenefits(benefits.filter((_, i) => i !== index));
     if (type === "care" && careInstructions.length > 1) setCareInstructions(careInstructions.filter((_, i) => i !== index));
+  };
+
+  // Clean up object URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (coverPreview && coverPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(coverPreview);
+      }
+      stagedGalleryFiles.forEach((f) => {
+        if (f.previewUrl?.startsWith("blob:")) {
+          URL.revokeObjectURL(f.previewUrl);
+        }
+      });
+    };
+  }, [coverPreview, stagedGalleryFiles]);
+
+  const handleRemoveExistingGalleryImage = (index: number) => {
+    setExistingGalleryImages((prev) => prev.filter((_, i) => i !== index));
+    toast.success("Gallery photo marked for deletion on save.");
+  };
+
+  const handleReplaceExistingGalleryImage = (index: number, newFile: File) => {
+    setExistingGalleryImages((prev) => prev.filter((_, i) => i !== index));
+    const newStaged: IStagedGalleryFile = {
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      file: newFile,
+      previewUrl: URL.createObjectURL(newFile),
+    };
+    setStagedGalleryFiles((prev) => [...prev, newStaged]);
+  };
+
+  const handleAddStagedGalleryFiles = (newFiles: File[]) => {
+    const newItems: IStagedGalleryFile[] = newFiles.map((file) => ({
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+    setStagedGalleryFiles((prev) => [...prev, ...newItems]);
+    toast.success(`Queued ${newFiles.length} new gallery image${newFiles.length === 1 ? "" : "s"}.`);
+  };
+
+  const handleRemoveStagedGalleryFile = (id: string) => {
+    setStagedGalleryFiles((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target?.previewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((item) => item.id !== id);
+    });
   };
 
   const handleCoverAssignment = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -175,10 +236,19 @@ export default function EditPlantPage() {
         formData.append("coverImage", coverImage);
       }
 
+      // Append preserved existing gallery images
+      formData.append("existingImages", JSON.stringify(existingGalleryImages));
+
+      // Append newly staged gallery images (both keys for broad backend compatibility)
+      stagedGalleryFiles.forEach((item) => {
+        formData.append("images", item.file);
+        formData.append("galleryImages", item.file);
+      });
+
       const response = await nurseryService.updatePlantAsset(plantId, formData);
       dispatch(updatePlantInNurseryState(response.plant));
 
-      toast.success("Inventory metrics matrix altered successfully!", { id: mutationToast });
+      toast.success("Inventory metrics & gallery altered successfully!", { id: mutationToast });
       router.push("/nursery/plants");
     } catch (err: any) {
       const errMsg = err?.message || "Internal mutator parsing runtime crash.";
@@ -380,6 +450,18 @@ export default function EditPlantPage() {
             <input id="editCoverFileNode" type="file" accept="image/*" className="hidden" onChange={handleCoverAssignment} />
           </div>
         </div>
+
+        {/* Multi-Angle Showcase Gallery Cluster Management */}
+        <ProductGalleryManager
+          existingImages={existingGalleryImages}
+          onRemoveExisting={handleRemoveExistingGalleryImage}
+          onReplaceExisting={handleReplaceExistingGalleryImage}
+          stagedImages={stagedGalleryFiles}
+          onAddStagedFiles={handleAddStagedGalleryFiles}
+          onRemoveStaged={handleRemoveStagedGalleryFile}
+          maxImages={10}
+          disabled={isLoading}
+        />
 
         {error && (
           <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-700 text-xs font-bold">

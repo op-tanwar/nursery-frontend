@@ -479,7 +479,12 @@ export default function ProductDetailClient({
 
         {/* ─── Above-the-fold: statically imported, renders immediately ─── */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-16 items-start mb-12">
-          <ProductImageSection tag={item.tag} emoji={item.emoji} name={item.name} />
+          <ProductImageSection
+            tag={item.tag}
+            emoji={item.emoji}
+            name={item.name}
+            galleryImages={item.galleryImages}
+          />
           <ProductInfoSection
             id={item.id}
             type={item.type}
