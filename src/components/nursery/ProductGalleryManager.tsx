@@ -35,6 +35,7 @@ interface ProductGalleryManagerProps {
   onRemoveStaged: (id: string) => void;
   maxImages?: number;
   disabled?: boolean;
+  deletedCount?: number;
 }
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -49,6 +50,7 @@ export const ProductGalleryManager: React.FC<ProductGalleryManagerProps> = ({
   onRemoveStaged,
   maxImages = 10,
   disabled = false,
+  deletedCount = 0,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
@@ -179,6 +181,11 @@ export const ProductGalleryManager: React.FC<ProductGalleryManagerProps> = ({
           {stagedImages.length > 0 && (
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse">
               +{stagedImages.length} New Staged
+            </span>
+          )}
+          {Boolean(deletedCount && deletedCount > 0) && (
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+              -{deletedCount} To Delete
             </span>
           )}
         </div>

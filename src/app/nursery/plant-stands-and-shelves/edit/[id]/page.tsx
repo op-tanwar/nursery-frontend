@@ -63,12 +63,13 @@ export default function EditStandsShelvesPage() {
   // Gallery Management States
   const [existingGalleryImages, setExistingGalleryImages] = useState<IGalleryImageItem[]>([]);
   const [stagedGalleryFiles, setStagedGalleryFiles] = useState<IStagedGalleryFile[]>([]);
+  const [deletedImagePublicIds, setDeletedImagePublicIds] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchStandData = async () => {
       dispatch(setNurseryLoading(true));
       try {
-        const response = await plantStandsShelvesService.getPlantStandsShelvesDetails(standId);
+        const response = await plantStandsShelvesService.getPlantStandsShelvesDetails(`${standId}?t=${Date.now()}`);
         const item = response.plantStandsShelves || response?.data || response;
 
         setName(item.name || "");
@@ -151,11 +152,19 @@ export default function EditStandsShelvesPage() {
   }, [coverPreview, stagedGalleryFiles]);
 
   const handleRemoveExistingGalleryImage = (index: number) => {
+    const target = existingGalleryImages[index];
+    if (target?.public_id) {
+      setDeletedImagePublicIds((prev) => [...prev, target.public_id!]);
+    }
     setExistingGalleryImages((prev) => prev.filter((_, i) => i !== index));
     toast.success("Gallery photo marked for deletion on save.");
   };
 
   const handleReplaceExistingGalleryImage = (index: number, newFile: File) => {
+    const target = existingGalleryImages[index];
+    if (target?.public_id) {
+      setDeletedImagePublicIds((prev) => [...prev, target.public_id!]);
+    }
     setExistingGalleryImages((prev) => prev.filter((_, i) => i !== index));
     const newStaged: IStagedGalleryFile = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -231,6 +240,11 @@ export default function EditStandsShelvesPage() {
 
       formData.append("plantStandsShelvesData", JSON.stringify(plantStandsShelvesData));
       if (coverImage) formData.append("coverImage", coverImage);
+
+      // Append explicit deleted image public IDs for Cloudinary garbage collection
+      if (deletedImagePublicIds.length > 0) {
+        formData.append("deletedImagePublicIds", JSON.stringify(deletedImagePublicIds));
+      }
 
       // Append preserved existing gallery images
       formData.append("existingImages", JSON.stringify(existingGalleryImages));
@@ -428,6 +442,7 @@ export default function EditStandsShelvesPage() {
           onRemoveStaged={handleRemoveStagedGalleryFile}
           maxImages={10}
           disabled={isLoading}
+          deletedCount={deletedImagePublicIds.length}
         />
 
         {error && (

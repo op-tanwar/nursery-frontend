@@ -70,6 +70,7 @@ export default function EditPlantPage() {
   // Gallery Management States
   const [existingGalleryImages, setExistingGalleryImages] = useState<IGalleryImageItem[]>([]);
   const [stagedGalleryFiles, setStagedGalleryFiles] = useState<IStagedGalleryFile[]>([]);
+  const [deletedImagePublicIds, setDeletedImagePublicIds] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchPlantDataNode = async () => {
@@ -77,7 +78,7 @@ export default function EditPlantPage() {
       try {
         let targetedPlant: any = null;
         try {
-          const directRes = await plantService.getPlantDetails(plantId);
+          const directRes = await plantService.getPlantDetails(`${plantId}?t=${Date.now()}`);
           targetedPlant = directRes?.plant || directRes?.data;
         } catch {
           // fallback to inventory list
@@ -159,11 +160,19 @@ export default function EditPlantPage() {
   }, [coverPreview, stagedGalleryFiles]);
 
   const handleRemoveExistingGalleryImage = (index: number) => {
+    const target = existingGalleryImages[index];
+    if (target?.public_id) {
+      setDeletedImagePublicIds((prev) => [...prev, target.public_id!]);
+    }
     setExistingGalleryImages((prev) => prev.filter((_, i) => i !== index));
     toast.success("Gallery photo marked for deletion on save.");
   };
 
   const handleReplaceExistingGalleryImage = (index: number, newFile: File) => {
+    const target = existingGalleryImages[index];
+    if (target?.public_id) {
+      setDeletedImagePublicIds((prev) => [...prev, target.public_id!]);
+    }
     setExistingGalleryImages((prev) => prev.filter((_, i) => i !== index));
     const newStaged: IStagedGalleryFile = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -234,6 +243,11 @@ export default function EditPlantPage() {
 
       if (coverImage) {
         formData.append("coverImage", coverImage);
+      }
+
+      // Append explicit deleted image public IDs for Cloudinary garbage collection
+      if (deletedImagePublicIds.length > 0) {
+        formData.append("deletedImagePublicIds", JSON.stringify(deletedImagePublicIds));
       }
 
       // Append preserved existing gallery images
@@ -461,6 +475,7 @@ export default function EditPlantPage() {
           onRemoveStaged={handleRemoveStagedGalleryFile}
           maxImages={10}
           disabled={isLoading}
+          deletedCount={deletedImagePublicIds.length}
         />
 
         {error && (

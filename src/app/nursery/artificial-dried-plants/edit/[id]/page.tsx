@@ -86,17 +86,13 @@ export default function EditArtificialDriedPlantPage() {
   // Gallery Management States
   const [existingGalleryImages, setExistingGalleryImages] = useState<IGalleryImageItem[]>([]);
   const [stagedGalleryFiles, setStagedGalleryFiles] = useState<IStagedGalleryFile[]>([]);
-
-  // Gallery Images State
-  const [existingGallery, setExistingGallery] = useState<GalleryImageItem[]>([]);
-  const [newGalleryImages, setNewGalleryImages] = useState<File[]>([]);
-  const [newGalleryPreviews, setNewGalleryPreviews] = useState<string[]>([]);
+  const [deletedImagePublicIds, setDeletedImagePublicIds] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchPlantData = async () => {
       dispatch(setNurseryLoading(true));
       try {
-        const response = await artificialDriedPlantService.getArtificialDetails(plantId);
+        const response = await artificialDriedPlantService.getArtificialDetails(`${plantId}?t=${Date.now()}`);
         const plant = response?.artificialDriedPlant || response?.artificial || response?.data || response;
 
         setName(plant.name || "");
@@ -125,9 +121,6 @@ export default function EditArtificialDriedPlantPage() {
 
         setExistingCoverUrl(plant.coverImage?.url || "");
         setExistingGalleryImages(Array.isArray(plant.images) ? plant.images : []);
-        if (plant.images && Array.isArray(plant.images)) {
-          setExistingGallery(plant.images);
-        }
 
         dispatch(setNurseryLoading(false));
       } catch (err: any) {
@@ -139,14 +132,6 @@ export default function EditArtificialDriedPlantPage() {
 
     if (plantId) fetchPlantData();
   }, [plantId, dispatch]);
-
-  // Clean memory on unmount or preview update
-  useEffect(() => {
-    return () => {
-      if (coverPreview) URL.revokeObjectURL(coverPreview);
-      newGalleryPreviews.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [coverPreview, newGalleryPreviews]);
 
   // Clean up object URLs to prevent memory leaks
   useEffect(() => {
@@ -163,11 +148,19 @@ export default function EditArtificialDriedPlantPage() {
   }, [coverPreview, stagedGalleryFiles]);
 
   const handleRemoveExistingGalleryImage = (index: number) => {
+    const target = existingGalleryImages[index];
+    if (target?.public_id) {
+      setDeletedImagePublicIds((prev) => [...prev, target.public_id!]);
+    }
     setExistingGalleryImages((prev) => prev.filter((_, i) => i !== index));
     toast.success("Gallery photo marked for deletion on save.");
   };
 
   const handleReplaceExistingGalleryImage = (index: number, newFile: File) => {
+    const target = existingGalleryImages[index];
+    if (target?.public_id) {
+      setDeletedImagePublicIds((prev) => [...prev, target.public_id!]);
+    }
     setExistingGalleryImages((prev) => prev.filter((_, i) => i !== index));
     const newStaged: IStagedGalleryFile = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -204,26 +197,6 @@ export default function EditArtificialDriedPlantPage() {
       setCoverImage(file);
       setCoverPreview(URL.createObjectURL(file));
     }
-  };
-
-  const handleGalleryAddition = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const selectedFiles = Array.from(e.target.files);
-      const selectedPreviews = selectedFiles.map((f) => URL.createObjectURL(f));
-
-      setNewGalleryImages((prev) => [...prev, ...selectedFiles]);
-      setNewGalleryPreviews((prev) => [...prev, ...selectedPreviews]);
-    }
-  };
-
-  const removeExistingGalleryImage = (publicId: string) => {
-    setExistingGallery((prev) => prev.filter((img) => img.public_id !== publicId));
-  };
-
-  const removeNewGalleryImage = (index: number) => {
-    URL.revokeObjectURL(newGalleryPreviews[index]);
-    setNewGalleryImages((prev) => prev.filter((_, i) => i !== index));
-    setNewGalleryPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handlePointChange = (index: number, val: string) => {
@@ -263,7 +236,6 @@ export default function EditArtificialDriedPlantPage() {
           washable,
           potIncluded,
         },
-        existingImages: existingGallery,
         ...(metaTitle ? { metaTitle } : {}),
         ...(metaDescription ? { metaDescription } : {}),
       };
@@ -274,6 +246,11 @@ export default function EditArtificialDriedPlantPage() {
         formData.append("coverImage", coverImage);
       }
 
+      // Append explicit deleted image public IDs for Cloudinary garbage collection
+      if (deletedImagePublicIds.length > 0) {
+        formData.append("deletedImagePublicIds", JSON.stringify(deletedImagePublicIds));
+      }
+
       // Append preserved existing gallery images
       formData.append("existingImages", JSON.stringify(existingGalleryImages));
 
@@ -281,10 +258,6 @@ export default function EditArtificialDriedPlantPage() {
       stagedGalleryFiles.forEach((item) => {
         formData.append("images", item.file);
         formData.append("galleryImages", item.file);
-      });
-
-      newGalleryImages.forEach((file) => {
-        formData.append("images", file);
       });
 
       await artificialDriedPlantService.updateArtificial(plantId, formData);
@@ -575,64 +548,9 @@ export default function EditArtificialDriedPlantPage() {
           onRemoveStaged={handleRemoveStagedGalleryFile}
           maxImages={10}
           disabled={isLoading}
+          deletedCount={deletedImagePublicIds.length}
         />
-
-          {/* Gallery Images */}
-          <div className="space-y-3">
-            <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
-              Gallery Images ({existingGallery.length + newGalleryImages.length})
-            </label>
-            <div className="border-2 border-dashed border-slate-200 hover:border-emerald-600 rounded-xl p-4 transition-colors bg-slate-50/30 min-h-[140px]">
-              <label
-                htmlFor="galleryFilesEdit"
-                className="flex items-center justify-center gap-2 cursor-pointer border border-slate-200 bg-white py-2 rounded-lg text-xs font-bold text-slate-700 w-full mb-3 hover:bg-slate-50 transition-colors"
-              >
-                <Plus className="w-4 h-4 text-slate-500" />
-                <span>Add Additional Gallery Images</span>
-              </label>
-              <input
-                id="galleryFilesEdit"
-                type="file"
-                multiple
-                accept="image/*"
-                className="hidden"
-                onChange={handleGalleryAddition}
-              />
-
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
-                {/* Existing Gallery Photos */}
-                {existingGallery.map((img) => (
-                  <div key={img.public_id} className="relative w-14 h-14 rounded-lg overflow-hidden border border-slate-100 shrink-0 bg-white">
-                    <Image src={img.url} alt="Existing gallery asset" fill sizes="56px" className="object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeExistingGalleryImage(img.public_id)}
-                      className="absolute inset-0 bg-black/50 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity border-none cursor-pointer"
-                      title="Remove image"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-
-                {/* Newly Added Gallery Previews */}
-                {newGalleryPreviews.map((src, idx) => (
-                  <div key={`new-${idx}`} className="relative w-14 h-14 rounded-lg overflow-hidden border border-emerald-300 shrink-0 bg-white">
-                    <Image src={src} alt="New gallery upload" fill sizes="56px" className="object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeNewGalleryImage(idx)}
-                      className="absolute inset-0 bg-black/50 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity border-none cursor-pointer"
-                      title="Remove image"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+      </div>
 
         {error && (
           <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-700 text-xs font-bold">

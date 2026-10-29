@@ -67,6 +67,7 @@ export default function EditAccessoryConfigurationPage() {
   // Gallery Management States
   const [existingGalleryImages, setExistingGalleryImages] = useState<IGalleryImageItem[]>([]);
   const [stagedGalleryFiles, setStagedGalleryFiles] = useState<IStagedGalleryFile[]>([]);
+  const [deletedImagePublicIds, setDeletedImagePublicIds] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchAccessoryDataNode = async () => {
@@ -74,7 +75,7 @@ export default function EditAccessoryConfigurationPage() {
       try {
         let targetedAcc: any = null;
         try {
-          const directRes = await accessoryService.getAccessoryDetails(accId);
+          const directRes = await accessoryService.getAccessoryDetails(`${accId}?t=${Date.now()}`);
           targetedAcc = directRes?.accessory || directRes?.data;
         } catch {
           // fallback to inventory list
@@ -151,11 +152,19 @@ export default function EditAccessoryConfigurationPage() {
   }, [coverPreview, stagedGalleryFiles]);
 
   const handleRemoveExistingGalleryImage = (index: number) => {
+    const target = existingGalleryImages[index];
+    if (target?.public_id) {
+      setDeletedImagePublicIds((prev) => [...prev, target.public_id!]);
+    }
     setExistingGalleryImages((prev) => prev.filter((_, i) => i !== index));
     toast.success("Gallery photo marked for deletion on save.");
   };
 
   const handleReplaceExistingGalleryImage = (index: number, newFile: File) => {
+    const target = existingGalleryImages[index];
+    if (target?.public_id) {
+      setDeletedImagePublicIds((prev) => [...prev, target.public_id!]);
+    }
     setExistingGalleryImages((prev) => prev.filter((_, i) => i !== index));
     const newStaged: IStagedGalleryFile = {
       id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -228,6 +237,11 @@ export default function EditAccessoryConfigurationPage() {
 
       if (coverImage) {
         formData.append("coverImage", coverImage);
+      }
+
+      // Append explicit deleted image public IDs for Cloudinary garbage collection
+      if (deletedImagePublicIds.length > 0) {
+        formData.append("deletedImagePublicIds", JSON.stringify(deletedImagePublicIds));
       }
 
       // Append preserved existing gallery images
@@ -424,6 +438,7 @@ export default function EditAccessoryConfigurationPage() {
           onRemoveStaged={handleRemoveStagedGalleryFile}
           maxImages={10}
           disabled={isLoading}
+          deletedCount={deletedImagePublicIds.length}
         />
 
         {error && (
