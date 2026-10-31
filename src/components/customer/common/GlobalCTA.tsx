@@ -19,7 +19,7 @@ export default function GlobalCTA({
   primaryBtnText = "Shop Plants Now",
   primaryBtnHref = "/shop",
   secondaryBtnText = "Partner With Us",
-  secondaryBtnHref = "/partner",
+  secondaryBtnHref = "/apply",
   showBadge = true,
 }: GlobalCTAProps) {
   return (
