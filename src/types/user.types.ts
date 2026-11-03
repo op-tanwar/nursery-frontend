@@ -9,6 +9,7 @@ export interface UserProfile {
   _id: string;
   name: string;
   email: string;
+  pendingEmail?: string;
   role: "user" | "nursery" | "admin";
   avatar?: IUserAvatar;
   isActive?: boolean;
@@ -35,6 +36,8 @@ export interface UpdatePasswordPayload {
 export interface ProfileApiResponse {
   success: boolean;
   message?: string;
+  requiresEmailVerification?: boolean;
+  pendingEmail?: string;
   user?: UserProfile;
   data?: any; // Extra safety for axios unwrapped data
 }
