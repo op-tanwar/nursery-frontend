@@ -11,6 +11,7 @@ export interface IPlantReview {
   name: string;
   rating: number;
   comment: string;
+  isVerifiedBuyer?: boolean;
   createdAt: string;
 }
 

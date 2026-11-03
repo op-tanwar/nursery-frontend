@@ -7,6 +7,7 @@ export interface IGardeningToolReview {
   name: string;
   rating: number;
   comment: string;
+  isVerifiedBuyer?: boolean;
   createdAt: string;
 }
 
