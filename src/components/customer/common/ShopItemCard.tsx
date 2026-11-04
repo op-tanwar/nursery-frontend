@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import toast from "react-hot-toast";
 
@@ -26,14 +25,14 @@ export interface ShopItemType {
   _id?: string;
   slug: string;
   type:
-  | "plants"
-  | "pots"
-  | "accessories"
-  | "gardening-tools"
-  | "plant-care"
-  | "seeds-bulbs"
-  | "plant-stands-shelves"
-  | "artificial-dried-plants";
+    | "plants"
+    | "pots"
+    | "accessories"
+    | "gardening-tools"
+    | "plant-care"
+    | "seeds-bulbs"
+    | "plant-stands-shelves"
+    | "artificial-dried-plants";
   category: string;
   name: string;
   vendor: string | { name?: string; businessName?: string; _id?: string; id?: string; slug?: string; location?: string };
@@ -78,8 +77,9 @@ export function StarRating({ rating }: { rating: number }) {
       {[1, 2, 3, 4, 5].map((s) => (
         <span
           key={s}
-          className={`text-xs leading-none ${s <= Math.floor(rating) ? "text-amber-400" : "text-slate-200"
-            }`}
+          className={`text-xs leading-none ${
+            s <= Math.floor(rating) ? "text-amber-400" : "text-slate-200"
+          }`}
         >
           ★
         </span>
@@ -89,7 +89,6 @@ export function StarRating({ rating }: { rating: number }) {
 }
 
 export default function ShopItemCard({ item, index }: ShopItemCardProps) {
-  const router = useRouter();
   const dispatch = useDispatch();
 
   // Local Loading States
@@ -148,6 +147,7 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
 
   const isImageUrl = item.emoji.startsWith("http") || item.emoji.startsWith("/");
   const itemSlug = item.slug || item.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const productUrl = `/shop/${item.type.toLowerCase()}/${itemSlug}`;
 
   const handleSessionStorageSet = () => {
     if (typeof window !== "undefined" && item.id) {
@@ -232,16 +232,12 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
   };
 
   return (
-    <div
-      onClick={() => {
-        handleSessionStorageSet();
-        router.push(`/shop/${item.type.toLowerCase()}/${itemSlug}`);
-      }}
-      className="group relative flex flex-col h-full bg-white border border-slate-200/80 rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-900/10 hover:border-emerald-600/30"
+    <article
+      aria-label={item.name}
+      className="group relative flex flex-col h-full bg-white border border-slate-200/80 rounded-2xl overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-900/10 hover:border-emerald-600/30"
     >
       {/* 2-LAYER IMAGE CANVAS (COVER BG + ZERO CROP IMAGE) */}
       <div className="relative w-full aspect-square overflow-hidden bg-slate-100 flex items-center justify-center border-b border-slate-100">
-
         {isImageUrl ? (
           <>
             {/* ⚡ PERF: Lightweight CSS backdrop glow uses browser-cached image instead of duplicate Next.js Image pipeline */}
@@ -252,7 +248,7 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
             />
 
             {/* LAYER 2: Crisp Hero Image (Zero Crop, 100% Visible) */}
-            <div className="relative z-1 w-full h-full p-4 flex items-center justify-center">
+            <div className="relative z-1 w-full h-full p-4 flex items-center justify-center pointer-events-none">
               <Image
                 src={item.emoji}
                 alt={item.name}
@@ -264,7 +260,7 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
             </div>
           </>
         ) : (
-          <span className="text-[76px] select-none transition-transform duration-300 group-hover:scale-110 drop-shadow-md z-1">
+          <span className="text-[76px] select-none transition-transform duration-300 group-hover:scale-110 drop-shadow-md z-1 pointer-events-none">
             {item.emoji}
           </span>
         )}
@@ -280,7 +276,7 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
           // 1. Strict qualification: Bestseller badge
           if (isBestseller) {
             return (
-              <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-emerald-700/90 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-white shadow-sm">
+              <span className="pointer-events-none absolute top-2.5 left-2.5 z-10 rounded-full bg-emerald-700/90 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-white shadow-sm">
                 Bestseller
               </span>
             );
@@ -289,7 +285,7 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
           // 2. Contextual low stock badge
           if (isLimited) {
             return (
-              <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-purple-600/90 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-white shadow-sm">
+              <span className="pointer-events-none absolute top-2.5 left-2.5 z-10 rounded-full bg-purple-600/90 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-white shadow-sm">
                 Limited
               </span>
             );
@@ -298,7 +294,7 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
           // 3. Contextual discount badge
           if (hasSignificantDiscount) {
             return (
-              <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-amber-500/90 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-white shadow-sm">
+              <span className="pointer-events-none absolute top-2.5 left-2.5 z-10 rounded-full bg-amber-500/90 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-white shadow-sm">
                 {discountPercent}% OFF
               </span>
             );
@@ -307,7 +303,7 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
           // 4. Contextual new arrival badge
           if (isNew) {
             return (
-              <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-teal-600/90 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-white shadow-sm">
+              <span className="pointer-events-none absolute top-2.5 left-2.5 z-10 rounded-full bg-teal-600/90 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-white shadow-sm">
                 New
               </span>
             );
@@ -316,7 +312,7 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
           // 5. Explicit custom tag (if specified and not legacy blanket value)
           if (item.tag && item.tag !== "Bestseller" && item.tag !== "Limited") {
             return (
-              <span className="absolute top-2.5 left-2.5 z-10 rounded-full bg-sky-600/90 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-white shadow-sm">
+              <span className="pointer-events-none absolute top-2.5 left-2.5 z-10 rounded-full bg-sky-600/90 backdrop-blur-sm px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-white shadow-sm">
                 {item.tag}
               </span>
             );
@@ -335,7 +331,7 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
 
           if (!isTopDiscountBadge && item.originalPrice && item.originalPrice > item.price) {
             return (
-              <span className="absolute bottom-3 left-3 text-[10px] font-black text-white bg-red-500 py-0.5 px-2 rounded-full tracking-wider z-10 shadow-sm">
+              <span className="pointer-events-none absolute bottom-3 left-3 text-[10px] font-black text-white bg-red-500 py-0.5 px-2 rounded-full tracking-wider z-10 shadow-sm">
                 -{Math.round(((item.originalPrice - item.price) / item.originalPrice) * 100)}% OFF
               </span>
             );
@@ -343,13 +339,13 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
           return null;
         })()}
 
-        {/* WISHLIST HEART BUTTON */}
+        {/* WISHLIST HEART BUTTON (Elevated z-20 to sit above stretched link overlay) */}
         <button
           type="button"
           disabled={isTogglingWishlist}
           onClick={handleWishlistToggle}
           aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-          className="absolute top-3 right-3 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-full w-9 h-9 flex items-center justify-center cursor-pointer text-sm transition-all duration-200 z-10 shadow-sm hover:bg-white hover:scale-110 hover:shadow-md active:scale-90 disabled:opacity-70"
+          className="absolute top-3 right-3 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-full w-9 h-9 flex items-center justify-center cursor-pointer text-sm transition-all duration-200 z-20 shadow-sm hover:bg-white hover:scale-110 hover:shadow-md active:scale-90 disabled:opacity-70"
         >
           <span className={`leading-none ${isTogglingWishlist ? "animate-pulse" : ""}`}>
             {isWishlisted ? "❤️" : "🤍"}
@@ -362,7 +358,7 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
         {/* CATEGORY BADGE */}
         <div>
           <span
-            className="inline-block text-[10px] font-bold py-1 px-2.5 rounded-md mb-2 tracking-wide uppercase"
+            className="inline-block text-[10px] font-bold py-1 px-2.5 rounded-md mb-2 tracking-wide uppercase pointer-events-none"
             style={{
               backgroundColor: `${item.badgeColor}15`,
               color: item.badgeColor,
@@ -372,12 +368,19 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
           </span>
         </div>
 
-        {/* PRODUCT TITLE */}
+        {/* PRODUCT TITLE & PRIMARY STRETCHED LINK (after:absolute after:inset-0 after:z-10) */}
         <h3 className="m-0 mb-1 text-[15px] sm:text-[16px] font-bold text-slate-900 leading-snug font-sans line-clamp-1 group-hover:text-emerald-700 transition-colors">
-          {item.name}
+          <Link
+            href={productUrl}
+            onClick={handleSessionStorageSet}
+            className="cursor-pointer focus:outline-none focus-visible:underline after:absolute after:inset-0 after:z-10"
+            aria-label={`View details for ${item.name}`}
+          >
+            {item.name}
+          </Link>
         </h3>
 
-        {/* VENDOR LINK LAYER */}
+        {/* VENDOR LINK LAYER (Elevated z-20 to allow direct vendor navigation) */}
         <p className="m-0 mb-2.5 text-xs text-slate-500 font-sans">
           by{" "}
           {vendorHref ? (
@@ -386,7 +389,7 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
               onClick={(e) => {
                 e.stopPropagation();
               }}
-              className="text-emerald-700 font-semibold hover:underline hover:text-emerald-800 transition-colors inline-block cursor-pointer relative z-10"
+              className="text-emerald-700 font-semibold hover:underline hover:text-emerald-800 transition-colors inline-block cursor-pointer relative z-20"
             >
               {displayVendorName}
             </Link>
@@ -398,7 +401,7 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
         </p>
 
         {/* REVIEWS & RATING */}
-        <div className="flex items-center gap-1.5 mb-4">
+        <div className="flex items-center gap-1.5 mb-4 pointer-events-none">
           <StarRating rating={item.rating} />
           <span className="text-[11px] font-medium text-slate-500 font-sans">
             {item.rating} <span className="text-slate-400">({item.reviews})</span>
@@ -407,7 +410,7 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
 
         {/* FOOTER: PRICE & ACTION */}
         <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-          <div className="flex flex-col">
+          <div className="flex flex-col pointer-events-none">
             <div className="flex items-baseline gap-1.5 flex-wrap">
               <span className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
                 ₹{item.price.toLocaleString()}
@@ -421,17 +424,17 @@ export default function ShopItemCard({ item, index }: ShopItemCardProps) {
             <span className="text-[10px] text-slate-400 font-medium">+ GST at checkout</span>
           </div>
 
-          {/* ADD TO CART ACTION BAR */}
+          {/* ADD TO CART ACTION BAR (Elevated z-20 to sit above stretched link overlay) */}
           <button
             type="button"
             disabled={isAddingToCart}
             onClick={handleAddToCart}
-            className="bg-emerald-700 text-white border-none rounded-xl py-2 px-3.5 sm:py-2.5 sm:px-4 text-xs font-bold cursor-pointer transition-all duration-200 hover:bg-emerald-800 hover:shadow-md hover:shadow-emerald-700/20 active:scale-95 relative z-10 shrink-0 disabled:bg-slate-300 disabled:cursor-not-allowed disabled:shadow-none"
+            className="bg-emerald-700 text-white border-none rounded-xl py-2 px-3.5 sm:py-2.5 sm:px-4 text-xs font-bold cursor-pointer transition-all duration-200 hover:bg-emerald-800 hover:shadow-md hover:shadow-emerald-700/20 active:scale-95 relative z-20 shrink-0 disabled:bg-slate-300 disabled:cursor-not-allowed disabled:shadow-none"
           >
             {isAddingToCart ? "Adding..." : "Add to Cart"}
           </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
