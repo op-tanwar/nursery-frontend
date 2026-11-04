@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -15,7 +15,8 @@ import {
   startPaymentProcess,
   setRazorpayOrderSuccess,
   setPaymentVerificationStatus,
-  setPaymentFailure
+  setPaymentFailure,
+  resetPaymentState,
 } from "@/redux/slices/paymentSlice";
 import { calculateCartTotals, getEffectivePrice, CategoryTaxConfig } from "@/utils/pricing";
 import { taxService } from "@/services/taxService";
@@ -41,6 +42,13 @@ interface RazorpayOptions {
   };
   theme: {
     color: string;
+  };
+  modal?: {
+    ondismiss?: () => void;
+    escape?: boolean;
+    backdropclose?: boolean;
+    animation?: boolean;
+    confirm_close?: boolean;
   };
 }
 
@@ -82,6 +90,134 @@ export default function CheckoutPage() {
   } | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
+
+  // 🔒 Reference to track active Razorpay order ID for modal dismissal & unload cleanup
+  const activeOrderIdRef = useRef<string | null>(null);
+
+  // 🛑 Helper to cancel pending reservation on server and release reservedStock immediately
+  const cancelPendingReservation = useCallback(
+    async (orderId: string, reason = "USER_DISMISSED_MODAL") => {
+      if (!orderId) return;
+      const currentUserId = (user as any)?._id || user?.id;
+
+      try {
+        await paymentService.cancelOrder({
+          razorpayOrderId: orderId,
+          orderId,
+          userId: currentUserId,
+          reason,
+        });
+      } catch (err) {
+        console.warn("Standard cancel order request failed, attempting beacon fallback:", err);
+
+        const baseUrl =
+          process.env.NEXT_PUBLIC_API_URL ||
+          "https://nursery-backend-2rg3.onrender.com/api/v1";
+        const cancelUrl = `${baseUrl}/payment/cancel-order`;
+        const payload = JSON.stringify({
+          razorpayOrderId: orderId,
+          orderId,
+          userId: currentUserId,
+          reason,
+        });
+
+        const token =
+          typeof window !== "undefined"
+            ? localStorage.getItem("urban_nursery_token") ||
+              localStorage.getItem("planto_token")
+            : null;
+
+        if (typeof fetch !== "undefined") {
+          try {
+            fetch(cancelUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              body: payload,
+              keepalive: true,
+              credentials: "include",
+            }).catch(() => {
+              if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+                const blob = new Blob([payload], { type: "application/json" });
+                navigator.sendBeacon(cancelUrl, blob);
+              }
+            });
+            return;
+          } catch {
+            // fallback below
+          }
+        }
+
+        if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+          const blob = new Blob([payload], { type: "application/json" });
+          navigator.sendBeacon(cancelUrl, blob);
+        }
+      }
+    },
+    [user]
+  );
+
+  // 🛡️ Reliable cleanup when user closes tab, reloads, or navigates away with modal open
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (activeOrderIdRef.current) {
+        const orderId = activeOrderIdRef.current;
+        activeOrderIdRef.current = null;
+        const currentUserId = (user as any)?._id || user?.id;
+        const baseUrl =
+          process.env.NEXT_PUBLIC_API_URL ||
+          "https://nursery-backend-2rg3.onrender.com/api/v1";
+        const cancelUrl = `${baseUrl}/payment/cancel-order`;
+        const payload = JSON.stringify({
+          razorpayOrderId: orderId,
+          orderId,
+          userId: currentUserId,
+          reason: "PAGE_UNLOAD",
+        });
+
+        const token =
+          typeof window !== "undefined"
+            ? localStorage.getItem("urban_nursery_token") ||
+              localStorage.getItem("planto_token")
+            : null;
+
+        if (typeof fetch !== "undefined") {
+          try {
+            fetch(cancelUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              body: payload,
+              keepalive: true,
+              credentials: "include",
+            });
+            return;
+          } catch {
+            // fallback below
+          }
+        }
+
+        if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+          const blob = new Blob([payload], { type: "application/json" });
+          navigator.sendBeacon(cancelUrl, blob);
+        }
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      if (activeOrderIdRef.current) {
+        const orderId = activeOrderIdRef.current;
+        activeOrderIdRef.current = null;
+        cancelPendingReservation(orderId, "COMPONENT_UNMOUNT");
+      }
+    };
+  }, [cancelPendingReservation, user]);
 
   useEffect(() => {
     setMounted(true);
@@ -255,6 +391,9 @@ export default function CheckoutPage() {
         throw new Error(responseData?.message || "Failed to initialize payment gateway order from server.");
       }
 
+      // 🔒 Track active order reference for dismissal/abandonment cleanup
+      activeOrderIdRef.current = razorpayOrder.id;
+
       dispatch(setRazorpayOrderSuccess(razorpayOrder));
       toast.dismiss(toastId);
 
@@ -271,7 +410,27 @@ export default function CheckoutPage() {
           email: formData.email.trim(),
           contact: formData.phone.trim()
         },
+        modal: {
+          ondismiss: function () {
+            const pendingOrderId = activeOrderIdRef.current || razorpayOrder.id;
+            activeOrderIdRef.current = null;
+
+            // 1. Release reserved stock immediately
+            cancelPendingReservation(pendingOrderId, "USER_DISMISSED_MODAL");
+
+            // 2. Reset loading / processing state and re-enable checkout buttons
+            dispatch(resetPaymentState());
+
+            // 3. Show subtle notification that payment was cancelled and items remain in cart
+            toast("Payment was cancelled. Your items remain in your cart.", {
+              icon: "🛒",
+              duration: 4000,
+            });
+          },
+        },
         handler: async function (response) {
+          // Clear active order ref since payment succeeded
+          activeOrderIdRef.current = null;
           const verifyToastId = toast.loading("Verifying payment and confirming order...");
           try {
             // 🔒 Cryptographic Verification & Snapshot Persistence
@@ -329,6 +488,7 @@ export default function CheckoutPage() {
       razorpayWindowInstance.open();
 
     } catch (err: any) {
+      activeOrderIdRef.current = null;
       console.error("Checkout execution error:", err);
       let catchMsg = err?.message || (typeof err === "string" ? err : "") || "Payment initialization failed.";
       if (err?.unserviceableItems && Array.isArray(err.unserviceableItems) && err.unserviceableItems.length > 0) {
