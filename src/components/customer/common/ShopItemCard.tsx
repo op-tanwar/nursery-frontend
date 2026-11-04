@@ -34,6 +34,7 @@ export interface ShopItemType {
     | "plant-stands-shelves"
     | "artificial-dried-plants";
   category: string;
+  subCategory?: string;
   name: string;
   vendor: string | { name?: string; businessName?: string; _id?: string; id?: string; slug?: string; location?: string };
   vendorName?: string;

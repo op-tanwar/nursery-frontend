@@ -294,6 +294,7 @@ export default function ShopCatalogClient({
         slug: generatedSlug,
         type: determinedType,
         category: product.category || "General",
+        subCategory: product.attributes?.subCategory,
         name: product.name,
         vendor: `${nurseryName}, ${nurseryLoc || "Indore"}`,
         vendorName: nurseryName,
@@ -342,7 +343,13 @@ export default function ShopCatalogClient({
     let result = [...mappedMarketItems];
 
     if (activeType === "All" && activeSubCategory !== "All") {
-      result = result.filter((item) => item.category === activeSubCategory);
+      result = result.filter(
+        (item) =>
+          item.category === activeSubCategory ||
+          (Array.isArray(item.tags) && item.tags.some((t: string) => t.toLowerCase() === activeSubCategory.toLowerCase())) ||
+          (typeof item.tags === "string" && item.tags.toLowerCase().includes(activeSubCategory.toLowerCase())) ||
+          ((item as any).subCategory && String((item as any).subCategory).toLowerCase() === activeSubCategory.toLowerCase())
+      );
     }
 
     if (selectedTag !== "All Tags") {
