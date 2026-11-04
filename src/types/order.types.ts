@@ -63,6 +63,14 @@ export interface IBackendOrderItem {
     isClaimed: boolean;
     status: string;
   };
+  refundDetails?: {
+    refundId?: string;
+    refundStatus?: "PENDING" | "PROCESSED" | "FAILED" | "PENDING_MANUAL_REVIEW";
+    refundAmount?: number;
+    refundedAt?: string;
+    reason?: string;
+    failureReason?: string;
+  };
 }
 
 export interface IOrder {
@@ -95,6 +103,14 @@ export interface IOrder {
   totalPrice?: number;
 
   orderStatus: OrderStatus;
+  refundDetails?: {
+    refundId?: string;
+    refundStatus?: "PENDING" | "PROCESSED" | "FAILED" | "PENDING_MANUAL_REVIEW";
+    refundAmount?: number;
+    refundedAt?: string;
+    reason?: string;
+    failureReason?: string;
+  };
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   paidAt?: string;
