@@ -7,7 +7,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setNurseryLoading, setNurseryError } from "@/redux/slices/nurserySlice";
-import { gardeningToolService } from "@/services/gardeningToolsService";
+import { nurseryService } from "@/services/nurseryService";
 import { ArrowLeft, Plus, Trash2, Image as ImageIcon, Loader2, Wrench, CheckCircle } from "lucide-react";
 
 const TOOL_CATEGORIES = [
@@ -121,7 +121,7 @@ export default function CreateGardeningToolPage() {
       formData.append("coverImage", coverImage);
       galleryImages.forEach((file) => formData.append("images", file));
 
-      await gardeningToolService.createGardeningTool(formData);
+      await nurseryService.createGardeningTool(formData);
       toast.success("Gardening tool added successfully!", { id: loadingToast });
       router.push("/nursery/gardening-tools");
     } catch (err: any) {

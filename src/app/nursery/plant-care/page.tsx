@@ -6,13 +6,13 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import {
-  setPlantCareLoading,
-  setPlantCareError,
-  setAllPlantCareData,
-  deletePlantCareFromState,
-  updatePlantCareInState,
-} from "@/redux/slices/plantCareSlice";
-import { plantCareService } from "@/services/plantCareService";
+  setNurseryLoading,
+  setNurseryError,
+  setNurseryPlantCare,
+  deletePlantCareFromNurseryState,
+  updatePlantCareInNurseryState,
+} from "@/redux/slices/nurserySlice";
+import { nurseryService } from "@/services/nurseryService";
 import {
   Plus,
   ShieldCheck,
@@ -48,8 +48,8 @@ export default function NurseryPlantCarePage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
 
-  const { plantCareList = [], isLoading, error } = useAppSelector(
-    (state) => state.plantCare
+  const { nurseryPlantCare: plantCareList = [], isLoading, error } = useAppSelector(
+    (state) => state.nursery
   );
   const plantCareItems = plantCareList as unknown as PlantCareRow[];
 
@@ -58,20 +58,14 @@ export default function NurseryPlantCarePage() {
   const [statusLoadingMap, setStatusLoadingMap] = useState<Record<string, boolean>>({});
 
   const syncInventoryDataStream = async () => {
-    dispatch(setPlantCareLoading(true));
+    dispatch(setNurseryLoading(true));
     try {
-      const response = await plantCareService.getMyPlantCare();
-      const items = response.plantCare || [];
-      dispatch(
-        setAllPlantCareData({
-          plantCare: items,
-          totalPlantCare: items.length,
-          filteredCount: items.length,
-        })
-      );
+      const response = await nurseryService.getMyPlantCare();
+      const items = response.products || response.plantCare || [];
+      dispatch(setNurseryPlantCare(items));
     } catch (err: any) {
       const errMsg = err?.message || err || "Parsing network stream error nodes.";
-      dispatch(setPlantCareError(errMsg));
+      dispatch(setNurseryError(errMsg));
       toast.error(errMsg);
     }
   };
@@ -86,16 +80,16 @@ export default function NurseryPlantCarePage() {
     const toastId = toast.loading(`${targetStatus ? "Activating" : "Deactivating"} live marketplace display...`);
 
     try {
-      const response = await plantCareService.togglePlantCareStatus(id);
+      const response = await nurseryService.togglePlantCareStatus(id);
 
       if (response && response.success) {
         const existing = plantCareItems.find((item) => item._id === id);
         const updatedAsset = {
           ...existing,
           _id: id,
-          isActive: response.isActive ?? targetStatus,
+          isActive: (response as any).isActive ?? targetStatus,
         } as PlantCareRow;
-        dispatch(updatePlantCareInState(updatedAsset as any));
+        dispatch(updatePlantCareInNurseryState(updatedAsset as any));
         toast.success(`Care item visibility shifted to ${targetStatus ? "Active" : "Inactive"}.`, { id: toastId });
       } else {
         await syncInventoryDataStream();
@@ -143,8 +137,8 @@ export default function NurseryPlantCarePage() {
   const executeEvictionPipeline = async (id: string, name: string) => {
     const loadingToast = toast.loading(`Evicting "${name}" from registry...`);
     try {
-      await plantCareService.deletePlantCare(id);
-      dispatch(deletePlantCareFromState(id));
+      await nurseryService.deletePlantCare(id);
+      dispatch(deletePlantCareFromNurseryState(id));
       toast.success(`Successfully removed "${name}"`, { id: loadingToast });
     } catch (err: any) {
       toast.error(err?.message || err || "Failed to delete inventory record row node.", { id: loadingToast });
@@ -158,13 +152,13 @@ export default function NurseryPlantCarePage() {
 
   const distinctCategories = useMemo<string[]>(() => {
     if (!plantCareItems.length) return [];
-    const set = new Set(plantCareItems.map((c: PlantCareRow) => c.category).filter(Boolean));
+    const set = new Set(plantCareItems.map((t) => t.category).filter(Boolean) as string[]);
     return Array.from(set);
   }, [plantCareItems]);
 
   const columns = useMemo<ColumnConfig<PlantCareRow>[]>(() => [
     {
-      header: "Plant Care Item Identity",
+      header: "Formulation Identity",
       accessorKey: "name",
       cell: (row) => (
         <div className="flex items-center gap-3">
@@ -179,165 +173,154 @@ export default function NurseryPlantCarePage() {
           </div>
           <div>
             <span className="font-bold text-slate-900 block truncate max-w-[180px]">{row.name}</span>
-            <span className="text-[10px] text-slate-400 font-mono block mt-0.5 truncate max-w-[140px]">{row._id}</span>
+            <span className="text-[10px] text-slate-400 font-mono tracking-tight">{row.slug}</span>
           </div>
         </div>
       ),
     },
     {
-      header: "Category Variant Tag",
+      header: "Category",
       accessorKey: "category",
       cell: (row) => (
-        <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-[10px] font-black uppercase tracking-wider">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100/60 shadow-xs">
+          <Layers className="w-3 h-3 text-emerald-500" />
           {row.category}
         </span>
       ),
     },
     {
-      header: "Price Value",
+      header: "Unit Price",
       accessorKey: "price",
       cell: (row) => (
-        <span className="font-mono font-bold text-slate-900">
+        <span className="font-bold text-slate-800 text-sm">
           ₹{row.price?.toLocaleString("en-IN")}
         </span>
       ),
     },
     {
-      header: "Stock In-House Units",
+      header: "Warehouse Reserve",
       accessorKey: "stock",
-      cell: (row) => (
-        <span className={`font-mono font-bold ${row.stock <= 5 ? "text-red-600 bg-red-50 px-2 py-0.5 rounded-md" : "text-slate-800"}`}>
-          {row.stock} units
-        </span>
-      ),
+      cell: (row) => {
+        const isDepleted = row.stock === 0;
+        const isCritical = row.stock > 0 && row.stock <= 5;
+        return (
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isDepleted ? "bg-red-500" : isCritical ? "bg-amber-500" : "bg-emerald-500"
+              }`}
+            />
+            <span
+              className={`font-semibold text-xs ${
+                isDepleted ? "text-red-600" : isCritical ? "text-amber-600" : "text-slate-600"
+              }`}
+            >
+              {row.stock} {isDepleted ? "(Out)" : "units"}
+            </span>
+          </div>
+        );
+      },
     },
     {
-      header: "Marketplace Status",
+      header: "Marketplace State",
       accessorKey: "isActive",
       cell: (row) => {
-        const isCurrentLoading = !!statusLoadingMap[row._id];
+        const isOperating = !!statusLoadingMap[row._id];
         return (
           <button
-            type="button"
-            disabled={isCurrentLoading}
             onClick={() => handleToggleActiveState(row._id, row.isActive)}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] font-black tracking-wide uppercase cursor-pointer select-none transition-all ${isCurrentLoading
-                ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
-                : row.isActive
-                  ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-                  : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
-              }`}
+            disabled={isOperating}
+            title={row.isActive ? "Deactivate Formulation from Public Access" : "Activate Formulation for Public Access"}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border shadow-xs cursor-pointer ${
+              row.isActive
+                ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                : "bg-slate-50 hover:bg-slate-100 text-slate-500 border-slate-200"
+            } ${isOperating ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            {isCurrentLoading ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            {isOperating ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-current" />
             ) : row.isActive ? (
-              <ToggleRight className="w-4 h-4 text-green-600" />
+              <ToggleRight className="w-4 h-4 text-emerald-600" />
             ) : (
-              <ToggleLeft className="w-4 h-4 text-amber-500" />
+              <ToggleLeft className="w-4 h-4 text-slate-400" />
             )}
-            <span>{row.isActive ? "Active" : "Inactive"}</span>
+            <span>{row.isActive ? "Active" : "Draft"}</span>
           </button>
         );
       },
     },
     {
-      header: "Customer Ratings",
-      accessorKey: "ratings",
-      cell: (row) => (
-        <div className="flex items-center gap-1.5">
-          <span className="font-bold text-amber-600">★ {row.ratings?.toFixed(1) || "0.0"}</span>
-          <span className="text-slate-400 text-[10px] font-semibold">({row.numOfReviews || 0})</span>
-        </div>
-      ),
-    },
-    {
-      header: "Actions Operations Engine",
+      header: "Control Actions",
       accessorKey: "_id",
-      className: "text-right pr-6",
       cell: (row) => (
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="flex items-center gap-1">
           <button
-            type="button"
             onClick={() => handleOpenQuickModal(row)}
-            className="p-2 text-slate-400 hover:text-amber-600 hover:bg-slate-100 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
-            title="Quick Calibration (Price & Stock)"
+            title="Fast Modify Stock / Price"
+            className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
           >
-            <Layers className="w-4 h-4" />
+            <RefreshCw className="w-4 h-4" />
           </button>
-
           <button
-            type="button"
-            onClick={() => window.open(`/shop/plant-care/${row.slug}`, "_blank", "noopener,noreferrer")}
-            className="p-2 text-slate-400 hover:text-green-600 hover:bg-slate-100 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
-            title="View Live Item Page"
+            onClick={() => router.push(`/shop/plant-care/${row.slug}`)}
+            title="View Live Listing Document"
+            className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
           >
             <Eye className="w-4 h-4" />
           </button>
-
           <button
-            type="button"
             onClick={() => router.push(`/nursery/plant-care/edit/${row._id}`)}
-            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
-            title="Full Edit Configs"
+            title="Edit Full Attributes Specification"
+            className="p-1.5 hover:bg-emerald-50 text-emerald-600 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
           >
             <Edit3 className="w-4 h-4" />
           </button>
-
           <button
-            type="button"
             onClick={() => handleRecordEviction(row._id, row.name)}
-            className="p-2 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
-            title="Evict Asset From Store"
+            title="Permanently Delete Formulation Blueprint"
+            className="p-1.5 hover:bg-red-50 text-red-600 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
       ),
     },
-  ], [router, statusLoadingMap, plantCareItems]);
+  ], [plantCareItems, statusLoadingMap]);
 
   return (
-    <div className="w-full space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-        <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight m-0 flex items-center gap-2">
-            <ShieldCheck className="text-green-600 w-5.5 h-5.5" />
-            <span>Plant Care Inventory</span>
-          </h1>
-          <p className="text-slate-500 text-xs mt-0.5 m-0">
-            Track fertilizers, pesticides, soils and care items stock multipliers, adjust live-store valuation pricings.
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-xs">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+              <ShieldCheck className="w-5 h-5" />
+            </span>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Plant Care & Nutrition Registry
+            </h1>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500">
+            Govern fertilizers, nutrients, soil remedies and organic protection matrices.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={syncInventoryDataStream}
-            disabled={isLoading}
-            className="p-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl cursor-pointer active:scale-95 transition-all disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => router.push("/nursery/plant-care/new")}
-            className="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-green-600/10 cursor-pointer transition-all border-none"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Care Item</span>
-          </button>
-        </div>
+        <button
+          onClick={() => router.push("/nursery/plant-care/new")}
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md shadow-emerald-500/20 border-none cursor-pointer"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>Register New Formulation</span>
+        </button>
       </div>
 
-      {isLoading ? (
-        <div className="w-full py-20 flex flex-col items-center justify-center gap-3 bg-white rounded-2xl border border-slate-200">
-          <Loader2 className="w-8 h-8 text-green-600 animate-spin" />
-          <span className="text-xs font-semibold text-slate-500">Parsing live care asset registers...</span>
+      {isLoading && !plantCareItems.length ? (
+        <div className="flex flex-col items-center justify-center p-16 bg-white rounded-2xl border border-slate-100 space-y-3">
+          <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+          <p className="text-xs font-semibold text-slate-400">Loading formulations catalog telemetry...</p>
         </div>
       ) : error ? (
-        <div className="w-full p-6 bg-red-50/50 border border-red-100 rounded-2xl flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+        <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600">
+          <AlertCircle className="w-5 h-5 shrink-0" />
           <div>
             <span className="text-xs font-bold text-red-800 block">Stream Processing Failure Context Triggered</span>
             <span className="text-[11px] text-red-600 mt-0.5 block">{error}</span>
@@ -348,7 +331,7 @@ export default function NurseryPlantCarePage() {
           data={plantCareItems}
           columns={columns}
           searchKey="name"
-          searchPlaceholder="Filter care items by name..."
+          searchPlaceholder="Filter items by name..."
           filterKey="category"
           filterOptions={distinctCategories}
         />
@@ -361,8 +344,11 @@ export default function NurseryPlantCarePage() {
           setSelectedItem(null);
         }}
         plantData={selectedItem}
-        onUpdate={(id, fd) => plantCareService.updatePlantCare(id, fd)}
-        onSuccess={(res) => dispatch(updatePlantCareInState(res.plantCare || res))}
+        onUpdate={(id, formData) => nurseryService.updatePlantCare(id, formData)}
+        onSuccess={(updated) => {
+          const item = updated?.plantCare || updated?.product || updated;
+          if (item?._id) dispatch(updatePlantCareInNurseryState(item));
+        }}
       />
     </div>
   );

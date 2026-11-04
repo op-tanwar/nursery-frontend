@@ -12,7 +12,7 @@ import {
   updateAccessoryInNurseryState
 } from "@/redux/slices/nurserySlice";
 import { nurseryService } from "@/services/nurseryService";
-import { accessoryService } from "@/services/accessoryService";
+import { productService } from "@/services/productService";
 import {
   ProductGalleryManager,
   IGalleryImageItem,
@@ -75,8 +75,8 @@ export default function EditAccessoryConfigurationPage() {
       try {
         let targetedAcc: any = null;
         try {
-          const directRes = await accessoryService.getAccessoryDetails(`${accId}?t=${Date.now()}`);
-          targetedAcc = directRes?.accessory || directRes?.data;
+          const directRes = await productService.getProductByIdOrSlug(accId);
+          targetedAcc = directRes?.product || (directRes as any)?.accessory || (directRes as any)?.data;
         } catch {
           // fallback to inventory list
         }

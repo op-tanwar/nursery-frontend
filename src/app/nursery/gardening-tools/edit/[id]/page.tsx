@@ -7,7 +7,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setNurseryLoading, setNurseryError } from "@/redux/slices/nurserySlice";
-import { gardeningToolService } from "@/services/gardeningToolsService";
+import { nurseryService } from "@/services/nurseryService";
 import {
   ProductGalleryManager,
   IGalleryImageItem,
@@ -63,7 +63,7 @@ export default function EditToolPage() {
     const fetchToolData = async () => {
       dispatch(setNurseryLoading(true));
       try {
-        const response = await gardeningToolService.getGardeningToolDetails(`${toolId}?t=${Date.now()}`);
+        const response = await nurseryService.getGardeningToolDetails(`${toolId}?t=${Date.now()}`);
         const tool = response.gardeningTool || response?.data || response;
 
         setName(tool.name || "");
@@ -230,7 +230,7 @@ export default function EditToolPage() {
         formData.append("galleryImages", item.file);
       });
 
-      await gardeningToolService.updateGardeningTool(toolId, formData);
+      await nurseryService.updateGardeningTool(toolId, formData);
       toast.success("Tool updated successfully!", { id: loadingToast });
       router.push("/nursery/gardening-tools");
     } catch (err: any) {

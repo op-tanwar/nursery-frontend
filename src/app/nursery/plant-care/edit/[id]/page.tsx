@@ -7,7 +7,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setNurseryLoading, setNurseryError } from "@/redux/slices/nurserySlice";
-import { plantCareService } from "@/services/plantCareService";
+import { nurseryService } from "@/services/nurseryService";
 import {
   ProductGalleryManager,
   IGalleryImageItem,
@@ -65,7 +65,7 @@ export default function EditPlantCarePage() {
     const fetchCareData = async () => {
       dispatch(setNurseryLoading(true));
       try {
-        const response = await plantCareService.getPlantCareDetails(`${careId}?t=${Date.now()}`);
+        const response = await nurseryService.getPlantCareDetails(`${careId}?t=${Date.now()}`);
         const item = response.plantCare || response?.data || response;
 
         setName(item.name || "");
@@ -240,7 +240,7 @@ export default function EditPlantCarePage() {
         formData.append("galleryImages", item.file);
       });
 
-      await plantCareService.updatePlantCare(careId, formData);
+      await nurseryService.updatePlantCare(careId, formData);
       toast.success("Plant care item updated!", { id: loadingToast });
       router.push("/nursery/plant-care");
     } catch (err: any) {

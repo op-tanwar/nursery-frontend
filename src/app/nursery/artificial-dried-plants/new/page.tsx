@@ -7,7 +7,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setNurseryLoading, setNurseryError } from "@/redux/slices/nurserySlice";
-import { artificialDriedPlantService } from "@/services/artificialDriedPlantService";
+import { nurseryService } from "@/services/nurseryService";
 import { ArrowLeft, Plus, Trash2, Image as ImageIcon, Loader2, Flower2, CheckCircle } from "lucide-react";
 
 const ARTIFICIAL_CATEGORIES = [
@@ -123,7 +123,7 @@ export default function CreateArtificialDriedPlantPage() {
       formData.append("coverImage", coverImage);
       galleryImages.forEach((file) => formData.append("images", file));
 
-      await artificialDriedPlantService.createArtificial(formData);
+      await nurseryService.createArtificial(formData);
       toast.success("Artificial/Dried Plant added successfully!", { id: loadingToast });
       router.push("/nursery/artificial-dried-plants");
     } catch (err: any) {

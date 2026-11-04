@@ -3,14 +3,7 @@
 import React, { useState } from "react";
 import { Star, X, Loader2, CheckCircle2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { plantService } from "@/services/PlantsService";
-import { potService } from "@/services/potService";
-import { accessoryService } from "@/services/accessoryService";
-import { gardeningToolService } from "@/services/gardeningToolsService";
-import { plantCareService } from "@/services/plantCareService";
-import { seedsBulbsService } from "@/services/seedsBulbsService";
-import { plantStandsShelvesService } from "@/services/plantStandsShelvesService";
-import { artificialDriedPlantService } from "@/services/artificialDriedPlantService";
+import { productService } from "@/services/productService";
 
 export interface WriteReviewModalProps {
   isOpen: boolean;
@@ -64,23 +57,7 @@ export default function WriteReviewModal({
         author: author.trim() || defaultAuthor || "Customer",
       };
 
-      if (model.includes("pot")) {
-        await potService.submitPotReview(product.id, reviewPayload);
-      } else if (model.includes("accessor")) {
-        await accessoryService.submitAccessoryReview(product.id, reviewPayload);
-      } else if (model.includes("tool") || model.includes("gardening")) {
-        await gardeningToolService.submitGardeningToolReview(product.id, reviewPayload);
-      } else if (model.includes("care") || model.includes("plantcare")) {
-        await plantCareService.submitPlantCareReview(product.id, reviewPayload);
-      } else if (model.includes("seed") || model.includes("bulb")) {
-        await seedsBulbsService.submitSeedsBulbsReview(product.id, reviewPayload);
-      } else if (model.includes("stand") || model.includes("shelve")) {
-        await plantStandsShelvesService.submitPlantStandsShelvesReview(product.id, reviewPayload);
-      } else if (model.includes("artificial") || model.includes("dried")) {
-        await artificialDriedPlantService.submitArtificialReview(product.id, reviewPayload);
-      } else {
-        await plantService.submitPlantReview(product.id, reviewPayload);
-      }
+      await productService.submitProductReview(product.id, reviewPayload);
 
       toast.success("Thank you! Your review has been submitted successfully.", {
         id: toastId,

@@ -7,7 +7,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setNurseryLoading, setNurseryError } from "@/redux/slices/nurserySlice";
-import { seedsBulbsService } from "@/services/seedsBulbsService";
+import { nurseryService } from "@/services/nurseryService";
 import {
   ProductGalleryManager,
   IGalleryImageItem,
@@ -63,7 +63,7 @@ export default function EditSeedsBulbsPage() {
     const fetchSeedData = async () => {
       dispatch(setNurseryLoading(true));
       try {
-        const response = await seedsBulbsService.getSeedsBulbsDetails(`${seedId}?t=${Date.now()}`);
+        const response = await nurseryService.getSeedsBulbsDetails(`${seedId}?t=${Date.now()}`);
         const seed = response.seedsBulbs || response?.data || response;
 
         setName(seed.name || "");
@@ -270,7 +270,7 @@ export default function EditSeedsBulbsPage() {
         formData.append("galleryImages", item.file);
       });
 
-      await seedsBulbsService.updateSeedsBulbs(seedId, formData);
+      await nurseryService.updateSeedsBulbs(seedId, formData);
       toast.success("Seeds/Bulbs entry updated!", { id: loadingToast });
       router.push("/nursery/seeds-bulbs");
     } catch (err: any) {

@@ -10,4 +10,4 @@ export * from "./gardeningTools.types";
 export * from "./seedsBulbs.types";
 export * from "./plantStandsShelves.types";
 export * from "./plantCare.types";
-
+export * from "./product.types";

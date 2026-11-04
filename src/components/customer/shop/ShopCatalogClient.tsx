@@ -6,45 +6,12 @@ import ShopItemCard, { ShopItemType } from "@/components/customer/common/ShopIte
 import { determineProductTag } from "@/utils/productBadge";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import PlantLoader from "@/components/customer/common/PlantLoader";
-// Services Imports
-import { plantService } from "@/services/PlantsService";
-import { potService } from "@/services/potService";
-import { accessoryService } from "@/services/accessoryService";
-import { gardeningToolService } from "@/services/gardeningToolsService";
-import { plantCareService } from "@/services/plantCareService";
-import { seedsBulbsService } from "@/services/seedsBulbsService";
-import { plantStandsShelvesService } from "@/services/plantStandsShelvesService";
-import { artificialDriedPlantService } from "@/services/artificialDriedPlantService";
-
-// Redux Slices Actions Imports
-import { setPlantLoading, setPlantError, setAllPlantsData } from "@/redux/slices/PlantsSlice";
-import { setPotLoading, setPotError, setAllPotsData } from "@/redux/slices/potSlice";
-import { setAccessoryLoading, setAccessoryError, setAllAccessoriesData } from "@/redux/slices/accessorySlice";
+import { productService } from "@/services/productService";
 import {
-  setGardeningToolLoading,
-  setGardeningToolError,
-  setAllGardeningToolsData,
-} from "@/redux/slices/gardeningToolsSlice";
-import {
-  setPlantCareLoading,
-  setPlantCareError,
-  setAllPlantCareData,
-} from "@/redux/slices/plantCareSlice";
-import {
-  setSeedsBulbsLoading,
-  setSeedsBulbsError,
-  setAllSeedsBulbsData,
-} from "@/redux/slices/seedsBulbsSlice";
-import {
-  setPlantStandsShelvesLoading,
-  setPlantStandsShelvesError,
-  setAllPlantStandsShelvesData,
-} from "@/redux/slices/plantStandsShelveSlice";
-import {
-  setArtificialLoading,
-  setArtificialError,
-  setAllArtificialsData,
-} from "@/redux/slices/artificialDriedPlantSlice";
+  setProductLoading,
+  setProductError,
+  setAllProductsData,
+} from "@/redux/slices/productSlice";
 
 const ITEMS_PER_PAGE = 12;
 
@@ -88,8 +55,33 @@ const URL_TYPE_TO_TAB: Record<string, ShopTabType> = {
   "Seeds & Bulbs": "Seeds & Bulbs",
   "plant-stands-shelves": "Plant Stands",
   "Plant Stands": "Plant Stands",
+  "stands-shelves": "Plant Stands",
   "artificial-dried-plants": "Artificial & Dried Plants",
   "Artificial & Dried Plants": "Artificial & Dried Plants",
+  "artificial-dried": "Artificial & Dried Plants",
+};
+
+const TAB_TO_CATEGORY: Record<ShopTabType, string | undefined> = {
+  All: undefined,
+  Plants: "plants",
+  Pots: "pots",
+  Accessories: "accessories",
+  "Gardening Tools": "gardening-tools",
+  "Plant Care": "plant-care",
+  "Seeds & Bulbs": "seeds-bulbs",
+  "Plant Stands": "stands-shelves",
+  "Artificial & Dried Plants": "artificial-dried",
+};
+
+const CATEGORY_TO_URL_TYPE: Record<string, ShopUrlType> = {
+  plants: "plants",
+  pots: "pots",
+  accessories: "accessories",
+  "gardening-tools": "gardening-tools",
+  "plant-care": "plant-care",
+  "seeds-bulbs": "seeds-bulbs",
+  "stands-shelves": "plant-stands-shelves",
+  "artificial-dried": "artificial-dried-plants",
 };
 
 const FALLBACK_EMOJI: Record<ShopUrlType, string> = {
@@ -115,54 +107,14 @@ export default function ShopCatalogClient({
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
 
-  // Extracting structures from Redux
-  const plantsArray = useAppSelector((state) => state.plant.plants) || [];
-  const totalPlants = useAppSelector((state) => state.plant.totalPlants) || 0;
-  const plantsCount = useAppSelector((state) => state.plant.filteredCount) || 0;
-  const isPlantLoading = useAppSelector((state) => state.plant.isLoading);
-  const plantError = useAppSelector((state) => state.plant.error);
-
-  const potsArray = useAppSelector((state) => state.pot.pots) || [];
-  const totalPots = useAppSelector((state) => state.pot.totalPots) || 0;
-  const potsCount = useAppSelector((state) => state.pot.filteredCount) || 0;
-  const isPotLoading = useAppSelector((state) => state.pot.isLoading);
-  const potError = useAppSelector((state) => state.pot.error);
-
-  const accessoriesArray = useAppSelector((state) => state.accessory.accessories) || [];
-  const totalAccessories = useAppSelector((state) => state.accessory.totalAccessories) || 0;
-  const accessoriesCount = useAppSelector((state) => state.accessory.filteredCount) || 0;
-  const isAccessoryLoading = useAppSelector((state) => state.accessory.isLoading);
-  const accessoryError = useAppSelector((state) => state.accessory.error);
-
-  const gardeningToolsArray = useAppSelector((state) => state.gardeningTool.gardeningTools) || [];
-  const totalGardeningTools = useAppSelector((state) => state.gardeningTool.totalGardeningTools) || 0;
-  const gardeningToolsCount = useAppSelector((state) => state.gardeningTool.filteredCount) || 0;
-  const isGardeningToolLoading = useAppSelector((state) => state.gardeningTool.isLoading);
-  const gardeningToolError = useAppSelector((state) => state.gardeningTool.error);
-
-  const plantCareArray = useAppSelector((state) => state.plantCare.plantCareList) || [];
-  const totalPlantCare = useAppSelector((state) => state.plantCare.totalPlantCare) || 0;
-  const plantCareCount = useAppSelector((state) => state.plantCare.filteredCount) || 0;
-  const isPlantCareLoading = useAppSelector((state) => state.plantCare.isLoading);
-  const plantCareError = useAppSelector((state) => state.plantCare.error);
-
-  const seedsBulbsArray = useAppSelector((state) => state.seedsBulbs.seedsBulbsList) || [];
-  const totalSeedsBulbs = useAppSelector((state) => state.seedsBulbs.totalSeedsBulbs) || 0;
-  const seedsBulbsCount = useAppSelector((state) => state.seedsBulbs.filteredCount) || 0;
-  const isSeedsBulbsLoading = useAppSelector((state) => state.seedsBulbs.isLoading);
-  const seedsBulbsError = useAppSelector((state) => state.seedsBulbs.error);
-
-  const plantStandsArray = useAppSelector((state) => state.plantStandsShelves.plantStandsShelvesList) || [];
-  const totalPlantStands = useAppSelector((state) => state.plantStandsShelves.totalPlantStandsShelves) || 0;
-  const plantStandsCount = useAppSelector((state) => state.plantStandsShelves.filteredCount) || 0;
-  const isPlantStandsLoading = useAppSelector((state) => state.plantStandsShelves.isLoading);
-  const plantStandsError = useAppSelector((state) => state.plantStandsShelves.error);
-
-  const artificialPlantsArray = useAppSelector((state) => state.artificialPlants?.artificials) || [];
-  const totalArtificialPlants = useAppSelector((state) => state.artificialPlants?.totalArtificials) || 0;
-  const artificialPlantsCount = useAppSelector((state) => state.artificialPlants?.filteredCount) || 0;
-  const isArtificialPlantsLoading = useAppSelector((state) => state.artificialPlants?.isLoading);
-  const artificialPlantsError = useAppSelector((state) => state.artificialPlants?.error);
+  // Extract catalog state from unified Redux slice
+  const {
+    products: catalogProducts,
+    totalProducts,
+    filteredCount,
+    isLoading: isSyncing,
+    error: productError,
+  } = useAppSelector((state) => state.product);
 
   // Navigation & UI Operational States
   const [activeType, setActiveType] = useState<ShopTabType>(() => {
@@ -240,261 +192,64 @@ export default function ShopCatalogClient({
     setCurrentPage(1);
   };
 
-  const { currentItems, isSyncing, totalServerCount, hasBackendError } = useMemo(() => {
-    const hasError = !!(
-      plantError ||
-      potError ||
-      accessoryError ||
-      gardeningToolError ||
-      plantCareError ||
-      seedsBulbsError ||
-      plantStandsError ||
-      artificialPlantsError
-    );
-
-    switch (activeType) {
-      case "Plants":
-        return { currentItems: plantsArray, isSyncing: isPlantLoading, totalServerCount: plantsCount || totalPlants, hasBackendError: !!plantError };
-      case "Pots":
-        return { currentItems: potsArray, isSyncing: isPotLoading, totalServerCount: potsCount || totalPots, hasBackendError: !!potError };
-      case "Accessories":
-        return { currentItems: accessoriesArray, isSyncing: isAccessoryLoading, totalServerCount: accessoriesCount || totalAccessories, hasBackendError: !!accessoryError };
-      case "Gardening Tools":
-        return { currentItems: gardeningToolsArray, isSyncing: isGardeningToolLoading, totalServerCount: gardeningToolsCount || totalGardeningTools, hasBackendError: !!gardeningToolError };
-      case "Plant Care":
-        return { currentItems: plantCareArray, isSyncing: isPlantCareLoading, totalServerCount: plantCareCount || totalPlantCare, hasBackendError: !!plantCareError };
-      case "Seeds & Bulbs":
-        return { currentItems: seedsBulbsArray, isSyncing: isSeedsBulbsLoading, totalServerCount: seedsBulbsCount || totalSeedsBulbs, hasBackendError: !!seedsBulbsError };
-      case "Plant Stands":
-        return { currentItems: plantStandsArray, isSyncing: isPlantStandsLoading, totalServerCount: plantStandsCount || totalPlantStands, hasBackendError: !!plantStandsError };
-      case "Artificial & Dried Plants":
-        return { currentItems: artificialPlantsArray, isSyncing: isArtificialPlantsLoading, totalServerCount: artificialPlantsCount || totalArtificialPlants, hasBackendError: !!artificialPlantsError };
-      case "All":
-      default:
-        return {
-          currentItems: [
-            ...plantsArray,
-            ...potsArray,
-            ...accessoriesArray,
-            ...gardeningToolsArray,
-            ...plantCareArray,
-            ...seedsBulbsArray,
-            ...plantStandsArray,
-            ...artificialPlantsArray,
-          ],
-          isSyncing:
-            isPlantLoading ||
-            isPotLoading ||
-            isAccessoryLoading ||
-            isGardeningToolLoading ||
-            isPlantCareLoading ||
-            isSeedsBulbsLoading ||
-            isPlantStandsLoading ||
-            isArtificialPlantsLoading,
-          totalServerCount:
-            (plantsCount || plantsArray.length) +
-            (potsCount || potsArray.length) +
-            (accessoriesCount || accessoriesArray.length) +
-            (gardeningToolsCount || gardeningToolsArray.length) +
-            (plantCareCount || plantCareArray.length) +
-            (seedsBulbsCount || seedsBulbsArray.length) +
-            (plantStandsCount || plantStandsArray.length) +
-            (artificialPlantsCount || artificialPlantsArray.length),
-          hasBackendError: hasError,
-        };
-    }
-  }, [
-    activeType,
-    plantsArray, potsArray, accessoriesArray, gardeningToolsArray, plantCareArray, seedsBulbsArray, plantStandsArray,
-    artificialPlantsArray,
-    isPlantLoading, isPotLoading, isAccessoryLoading, isGardeningToolLoading, isPlantCareLoading, isSeedsBulbsLoading, isPlantStandsLoading,
-    isArtificialPlantsLoading,
-    plantsCount, totalPlants, potsCount, totalPots, accessoriesCount, totalAccessories,
-    gardeningToolsCount, totalGardeningTools, plantCareCount, totalPlantCare, seedsBulbsCount, totalSeedsBulbs, plantStandsCount, totalPlantStands,
-    artificialPlantsCount, totalArtificialPlants,
-    plantError, potError, accessoryError, gardeningToolError, plantCareError, seedsBulbsError, plantStandsError,
-    artificialPlantsError,
-  ]);
-
+  // Unified single catalog sync routine against /api/v1/products
   useEffect(() => {
     let isMounted = true;
+
     const syncMarketplaceCatalog = async () => {
-      const buildQueryString = (overrideCategory?: string) => {
-        const queryParams = new URLSearchParams();
-
-        if (debouncedSearch.trim()) queryParams.append("keyword", debouncedSearch.trim());
-        if (userPincode) queryParams.append("pincode", userPincode);
-
-        if (activeType !== "All" && currentPage > 1) {
-          queryParams.append("page", currentPage.toString());
-        }
-
-        const finalCategory = overrideCategory || activeSubCategory;
-        if (finalCategory && finalCategory !== "All") {
-          queryParams.append("category", finalCategory);
-        }
-        return queryParams.toString();
-      };
-
       try {
-        const fetchPlants = async () => {
-          const qStr = buildQueryString(activeType === "All" ? "All" : undefined);
-          dispatch(setPlantLoading(true));
-          const res = await plantService.getAllPlants(qStr);
-          if (isMounted) {
-            dispatch(setAllPlantsData({
-              plants: res.plants || [],
-              totalPlants: res.totalPlants ?? (res.plants?.length || 0),
-              filteredCount: res.filteredCount ?? (res.plants?.length || 0),
-            }));
-          }
+        dispatch(setProductLoading(true));
+
+        const targetCategory = TAB_TO_CATEGORY[activeType];
+        const filters: Record<string, any> = {
+          limit: activeType === "All" ? 48 : ITEMS_PER_PAGE,
+          page: activeType === "All" ? 1 : currentPage,
         };
 
-        const fetchPots = async () => {
-          const qStr = buildQueryString(activeType === "All" ? "All" : undefined);
-          dispatch(setPotLoading(true));
-          const res = await potService.getAllPots(qStr);
-          if (isMounted) {
-            dispatch(setAllPotsData({
-              pots: res.pots || [],
-              totalPots: res.totalPots ?? (res.pots?.length || 0),
-              filteredCount: res.filteredCount ?? (res.pots?.length || 0),
-            }));
-          }
-        };
+        if (targetCategory) {
+          filters.category = targetCategory;
+        }
 
-        const fetchAccessories = async () => {
-          const qStr = buildQueryString(activeType === "All" ? "All" : undefined);
-          dispatch(setAccessoryLoading(true));
-          const res = await accessoryService.getAllAccessories(qStr);
-          const responseData = res as any;
-          const backendAccessories = res.accessories || responseData.accessorys || [];
-          const backendTotal = res.totalAccessories || responseData.totalAccessorys || backendAccessories.length;
+        if (debouncedSearch.trim()) {
+          filters.keyword = debouncedSearch.trim();
+        }
 
-          if (isMounted) {
-            dispatch(setAllAccessoriesData({
-              accessories: backendAccessories,
-              totalAccessories: backendTotal,
-              filteredCount: res.filteredCount ?? backendAccessories.length,
-            }));
-          }
-        };
+        if (activeSubCategory && activeSubCategory !== "All") {
+          filters.subCategory = activeSubCategory;
+        }
 
-        const fetchGardeningTools = async () => {
-          const qStr = buildQueryString(activeType === "All" ? "All" : undefined);
-          dispatch(setGardeningToolLoading(true));
-          const res = await gardeningToolService.getAllGardeningTools(qStr);
-          if (isMounted) {
-            dispatch(setAllGardeningToolsData({
-              gardeningTools: res.gardeningTools || [],
-              totalGardeningTools: res.totalGardeningTools ?? (res.gardeningTools?.length || 0),
-              filteredCount: res.filteredCount ?? (res.gardeningTools?.length || 0),
-            }));
-          }
-        };
+        const res = await productService.getProducts(filters);
 
-        const fetchPlantCare = async () => {
-          const qStr = buildQueryString(activeType === "All" ? "All" : undefined);
-          dispatch(setPlantCareLoading(true));
-          const res = await plantCareService.getAllPlantCare(qStr);
-          if (isMounted) {
-            dispatch(setAllPlantCareData({
-              plantCare: res.plantCare || [],
-              totalPlantCare: res.totalPlantCare ?? (res.plantCare?.length || 0),
-              filteredCount: res.filteredCount ?? (res.plantCare?.length || 0),
-            }));
-          }
-        };
-
-        const fetchSeedsBulbs = async () => {
-          const qStr = buildQueryString(activeType === "All" ? "All" : undefined);
-          dispatch(setSeedsBulbsLoading(true));
-          const res = await seedsBulbsService.getAllSeedsBulbs(qStr);
-          if (isMounted) {
-            dispatch(setAllSeedsBulbsData({
-              seedsBulbs: res.seedsBulbs || [],
-              totalSeedsBulbs: res.totalSeedsBulbs ?? (res.seedsBulbs?.length || 0),
-              filteredCount: res.filteredCount ?? (res.seedsBulbs?.length || 0),
-            }));
-          }
-        };
-
-        const fetchPlantStands = async () => {
-          const qStr = buildQueryString(activeType === "All" ? "All" : undefined);
-          dispatch(setPlantStandsShelvesLoading(true));
-          const res = await plantStandsShelvesService.getAllPlantStandsShelves(qStr);
-          if (isMounted) {
-            dispatch(setAllPlantStandsShelvesData({
-              plantStandsShelves: res.plantStandsShelves || [],
-              totalPlantStandsShelves: res.totalPlantStandsShelves ?? (res.plantStandsShelves?.length || 0),
-              filteredCount: res.filteredCount ?? (res.plantStandsShelves?.length || 0),
-            }));
-          }
-        };
-
-        const fetchArtificialDriedPlants = async () => {
-          const qStr = buildQueryString(activeType === "All" ? "All" : undefined);
-          dispatch(setArtificialLoading(true));
-          const res = await artificialDriedPlantService.getAllArtificials(qStr);
-          if (isMounted) {
-            const items = res.artificials || (res as any).artificialDriedPlants || [];
-            dispatch(setAllArtificialsData({
-              artificials: items,
-              totalArtificials: res.totalArtificials ?? items.length,
-              filteredCount: res.filteredCount ?? items.length,
-            }));
-          }
-        };
-
-        // ⚡ PERF: "All" tab used to fire 8 parallel catalog calls (TBT spike).
-        // Wave 1 = plants + pots (primary LCP grid), Wave 2 = remaining catalogs.
-        if (activeType === "All") {
-          await Promise.all([fetchPlants(), fetchPots()]);
-          if (!isMounted) return;
-          await Promise.all([
-            fetchAccessories(),
-            fetchGardeningTools(),
-            fetchPlantCare(),
-            fetchSeedsBulbs(),
-            fetchPlantStands(),
-            fetchArtificialDriedPlants(),
-          ]);
-        } else {
-          const promises = [];
-          if (activeType === "Plants") promises.push(fetchPlants());
-          if (activeType === "Pots") promises.push(fetchPots());
-          if (activeType === "Accessories") promises.push(fetchAccessories());
-          if (activeType === "Gardening Tools") promises.push(fetchGardeningTools());
-          if (activeType === "Plant Care") promises.push(fetchPlantCare());
-          if (activeType === "Seeds & Bulbs") promises.push(fetchSeedsBulbs());
-          if (activeType === "Artificial & Dried Plants") promises.push(fetchArtificialDriedPlants());
-          if (activeType === "Plant Stands") promises.push(fetchPlantStands());
-          await Promise.all(promises);
+        if (isMounted) {
+          dispatch(
+            setAllProductsData({
+              products: res.products || [],
+              totalCount: res.totalCount ?? (res.products?.length || 0),
+              filteredCount: res.filteredCount ?? (res.products?.length || 0),
+            })
+          );
         }
       } catch (err: any) {
-        if (!isMounted) return;
-        const errorMsg = err?.response?.data?.message || err?.message || "Failed to load shop metrics";
-        if (activeType === "Plants" || activeType === "All") dispatch(setPlantError(errorMsg));
-        if (activeType === "Pots" || activeType === "All") dispatch(setPotError(errorMsg));
-        if (activeType === "Accessories" || activeType === "All") dispatch(setAccessoryError(errorMsg));
-        if (activeType === "Gardening Tools" || activeType === "All") dispatch(setGardeningToolError(errorMsg));
-        if (activeType === "Plant Care" || activeType === "All") dispatch(setPlantCareError(errorMsg));
-        if (activeType === "Seeds & Bulbs" || activeType === "All") dispatch(setSeedsBulbsError(errorMsg));
-        if (activeType === "Artificial & Dried Plants" || activeType === "All") dispatch(setArtificialError(errorMsg));
-        if (activeType === "Plant Stands" || activeType === "All") dispatch(setPlantStandsShelvesError(errorMsg));
+        if (isMounted) {
+          dispatch(
+            setProductError(
+              err?.response?.data?.message || err?.message || "Failed to load catalog products."
+            )
+          );
+        }
       }
     };
 
     syncMarketplaceCatalog();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [activeType, activeSubCategory, debouncedSearch, currentPage, dispatch, userPincode]);
 
   const mappedMarketItems = useMemo<ShopItemType[]>(() => {
-    if (!Array.isArray(currentItems)) return [];
+    if (!Array.isArray(catalogProducts)) return [];
 
-    const idIn = (arr: any[], id: string) => arr.some((p: any) => p._id === id);
-
-    return currentItems.map((product: any) => {
+    return catalogProducts.map((product: any) => {
       const nurseryName =
         product.vendorName ||
         (typeof product.vendor === "string" ? product.vendor : product.vendor?.name || product.vendor?.businessName) ||
@@ -526,21 +281,13 @@ export default function ShopCatalogClient({
         (typeof product.nursery === "object" ? product.nursery?.nurseryId : null) ||
         (typeof product.nursery === "string" ? product.nursery : undefined);
 
-      const productId = product._id;
-
-      // Determine type from which Redux array the product came from
-      let determinedType: ShopUrlType = "plants";
-      if (idIn(gardeningToolsArray, productId)) determinedType = "gardening-tools";
-      else if (idIn(plantCareArray, productId)) determinedType = "plant-care";
-      else if (idIn(seedsBulbsArray, productId)) determinedType = "seeds-bulbs";
-      else if (idIn(plantStandsArray, productId)) determinedType = "plant-stands-shelves";
-      else if (idIn(artificialPlantsArray, productId)) determinedType = "artificial-dried-plants";
-      else if (idIn(potsArray, productId)) determinedType = "pots";
-      else if (idIn(accessoriesArray, productId)) determinedType = "accessories";
-      else if (idIn(plantsArray, productId)) determinedType = "plants";
+      const determinedType: ShopUrlType =
+        CATEGORY_TO_URL_TYPE[product.category] || "plants";
 
       const calculatedStock = product.stock ?? 0;
-      const generatedSlug = product.slug || product.name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
+      const generatedSlug =
+        product.slug ||
+        product.name.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
 
       return {
         id: product._id,
@@ -553,23 +300,28 @@ export default function ShopCatalogClient({
         vendorId: vendorId ? String(vendorId) : undefined,
         vendorSlug: vendorSlug ? String(vendorSlug) : undefined,
         nurseryId: nurseryUserId ? String(nurseryUserId) : undefined,
-        price: (product.discountPrice > 0 && product.discountPrice < product.price)
-          ? product.discountPrice
-          : (product.price || 0),
-        originalPrice: (product.discountPrice > 0 && product.discountPrice < product.price)
-          ? (product.price || 0)
-          : null,
-        rating: product.ratings || 4.5,
-        reviews: product.numOfReviews || 0,
+        price:
+          product.discountPrice > 0 && product.discountPrice < product.price
+            ? product.discountPrice
+            : product.price || 0,
+        originalPrice:
+          product.discountPrice > 0 && product.discountPrice < product.price
+            ? product.price || 0
+            : null,
+        rating: product.ratingsAverage || product.ratings || 4.5,
+        reviews: product.ratingsQuantity || product.numOfReviews || 0,
         badge: calculatedStock > 0 ? "Fresh Stock" : "Out of Stock",
         badgeColor: calculatedStock > 0 ? "#15803d" : "#dc2626",
         tag: determineProductTag({
           ...product,
           stock: calculatedStock,
-          ratings: product.ratings,
-          reviewsCount: product.numOfReviews,
+          ratings: product.ratingsAverage || product.ratings,
+          reviewsCount: product.ratingsQuantity || product.numOfReviews,
         }),
-        emoji: product.coverImage?.url || FALLBACK_EMOJI[determinedType],
+        emoji:
+          product.coverImage?.url ||
+          product.images?.[0]?.url ||
+          FALLBACK_EMOJI[determinedType],
         isBestSeller: product.isBestSeller ?? product.isBestseller,
         isBestseller: product.isBestseller ?? product.isBestSeller,
         isFeatured: product.isFeatured,
@@ -578,13 +330,13 @@ export default function ShopCatalogClient({
         salesCount: product.salesCount ?? product.totalSales,
         tags: product.tags,
         stock: calculatedStock,
-        ratings: product.ratings,
-        reviewsCount: product.numOfReviews,
+        ratings: product.ratingsAverage || product.ratings,
+        reviewsCount: product.ratingsQuantity || product.numOfReviews,
         discountPrice: product.discountPrice,
         createdAt: product.createdAt,
       };
     });
-  }, [currentItems, plantsArray, potsArray, accessoriesArray, gardeningToolsArray, plantCareArray, seedsBulbsArray, plantStandsArray, artificialPlantsArray]);
+  }, [catalogProducts]);
 
   const filteredAndSortedItems = useMemo(() => {
     let result = [...mappedMarketItems];
@@ -616,7 +368,7 @@ export default function ShopCatalogClient({
 
   const availableSubCategories = useMemo(() => {
     if (activeType === "Plants") {
-      return ["All", "Indoor Plants", "Outdoor Plants", "Succulents", "Medicinal Plants", "Flowering Plants", "Aromatic Plants", "Air Purifying Plants", "Foliage Plants", "Cacti", "Bonsai", "Terrarium Plants", "Pet-Friendly Plants"];
+      return ["All", "Indoor Plants", "Outdoor Plants", "Succulents", "Medicinal Plants", "Flowering Plants", "Aromatic Plants", "Air Purifying Plants", "Foliage Plants", "Bonsai", "Terrarium Plants", "Pet-Friendly Plants"];
     }
     if (activeType === "Pots") {
       return ["All", "Indoor Pots", "Outdoor Pots", "Hanging Planters", "Ceramic Pots", "Terracotta Planters", "Plastic/Resin Pots", "Metal Pots", "Fabric Grow Bags", "Self-Watering Pots"];
@@ -643,9 +395,9 @@ export default function ShopCatalogClient({
   }, [activeType]);
 
   const totalPages = useMemo(() => {
-    const totalCount = activeType === "All" ? filteredAndSortedItems.length : totalServerCount;
+    const totalCount = activeType === "All" ? filteredAndSortedItems.length : filteredCount || totalProducts;
     return Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-  }, [activeType, filteredAndSortedItems.length, totalServerCount]);
+  }, [activeType, filteredAndSortedItems.length, filteredCount, totalProducts]);
 
   const isAnyFilterActive = useMemo(() => {
     return searchQuery.trim() !== "" || activeSubCategory !== "All" || selectedTag !== "All Tags" || priceSort !== "default";
@@ -682,6 +434,13 @@ export default function ShopCatalogClient({
                 <span className="text-xs text-emerald-300 font-semibold bg-emerald-500/10 px-3.5 py-1.5 rounded-xl border border-emerald-500/20 shadow-inner flex items-center gap-1.5">
                   <span className="animate-pulse">📍</span> Delivering near {userPincode}
                 </span>
+                <button
+                  type="button"
+                  onClick={handleClearPincode}
+                  className="text-xs text-emerald-300/60 hover:text-emerald-200 underline cursor-pointer ml-1"
+                >
+                  Change
+                </button>
               </div>
             )}
           </div>
@@ -704,99 +463,96 @@ export default function ShopCatalogClient({
                       setActiveSubCategory(sub);
                       setCurrentPage(1);
                     }}
-                    className={`rounded-lg py-1.5 px-3.5 text-xs font-medium cursor-pointer transition-all duration-150 active:scale-95 ${activeSubCategory === sub
-                      ? "bg-white text-slate-950 font-bold shadow-md"
-                      : "bg-white/5 text-emerald-100/70 border border-white/5 hover:bg-white/10 hover:text-white hover:border-white/20"
+                    className={`py-1.5 px-3.5 rounded-lg text-xs font-semibold cursor-pointer transition-all border ${activeSubCategory === sub
+                      ? "bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm"
+                      : "bg-white/5 text-white/70 border-white/5 hover:border-white/20 hover:text-white"
                       }`}
                   >
-                    {sub === "All" ? `All ${activeType}` : sub}
+                    {sub}
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Search & Sort Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            {/* Search Input */}
-            <div className="md:col-span-6 relative">
+          {/* Search, Sorting, and Secondary Filters */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="relative">
               <input
                 type="text"
+                placeholder="Search products across catalog..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={`Search premium ${activeType !== "All" ? activeType.toLowerCase() : "items"}...`}
-                className="w-full bg-black/30 border border-white/15 rounded-xl py-2.5 pl-10 pr-4 text-xs font-medium text-white placeholder:text-emerald-100/40 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-all shadow-inner"
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 transition-all font-sans"
               />
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-200/60 text-xs">🔍</span>
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white text-xs"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
-            {/* Price Sort Dropdown */}
-            <div className="md:col-span-3 relative">
+            <div className="flex gap-2">
               <select
                 value={priceSort}
                 onChange={(e) => setPriceSort(e.target.value as any)}
-                className="w-full bg-black/30 border border-white/15 rounded-xl py-2.5 pl-3.5 pr-8 text-xs font-medium text-emerald-100/90 cursor-pointer focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 appearance-none [&>option]:bg-slate-900 [&>option]:text-white"
+                className="w-full bg-white/10 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400/50 cursor-pointer [&>option]:bg-slate-900 [&>option]:text-white"
               >
-                <option value="default">Sort: Recommended</option>
+                <option value="default">Sort by: Featured</option>
                 <option value="lowToHigh">Price: Low to High</option>
                 <option value="highToLow">Price: High to Low</option>
               </select>
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-200/60 text-[10px]">▼</span>
-            </div>
 
-            {/* Tag Filter Dropdown */}
-            <div className="md:col-span-3 relative">
               <select
                 value={selectedTag}
                 onChange={(e) => setSelectedTag(e.target.value)}
-                className="w-full bg-black/30 border border-white/15 rounded-xl py-2.5 pl-3.5 pr-8 text-xs font-medium text-emerald-100/90 cursor-pointer focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 appearance-none [&>option]:bg-slate-900 [&>option]:text-white"
+                className="w-full bg-white/10 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400/50 cursor-pointer [&>option]:bg-slate-900 [&>option]:text-white"
               >
-                <option value="All Tags">All Product Tags</option>
-                <option value="Bestseller">Bestseller Loop Only</option>
-                <option value="Limited">Limited Quantities</option>
-                <option value="New Arrival">Fresh Arrivals</option>
+                <option value="All Tags">All Badges</option>
+                <option value="Bestseller">Bestseller</option>
+                <option value="Trending">Trending</option>
+                <option value="Featured">Featured</option>
+                <option value="New Arrival">New Arrival</option>
               </select>
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-200/60 text-[10px]">▼</span>
             </div>
+
+            {isAnyFilterActive && (
+              <div className="flex items-center sm:col-span-2 lg:col-span-1 justify-end">
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="text-xs text-emerald-300 hover:text-white font-semibold underline cursor-pointer"
+                >
+                  Reset All Filters
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* GRID AREA */}
+        {/* FEEDBACK STATUS AND CATALOG GRID */}
+        {productError && (
+          <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-xs font-semibold mb-6">
+            ⚠️ {productError}
+          </div>
+        )}
+
         {showLoader ? (
-          <div className="w-full text-center py-24 text-slate-400 font-bold text-xs font-mono tracking-widest uppercase">
-            <PlantLoader fullScreen={false} text="Loading plants..." />
+          <div className="py-24 flex justify-center items-center">
+            <PlantLoader />
           </div>
         ) : visibleItems.length > 0 ? (
-          <div>
-            {isSyncing && (
-              <div className="text-[10px] text-brand-primary font-bold mb-2 animate-pulse text-right">
-                🔄 Syncing fresh stock indices in background...
-              </div>
-            )}
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-6 animate-fade-in">
-              {visibleItems.map((item, idx) => (
-                <ShopItemCard key={item.id} item={item} index={idx} />
-              ))}
-            </div>
-          </div>
-        ) : hasBackendError && userPincode ? (
-          <div className="text-center py-20 bg-panel border border-red-200/60 rounded-[24px] max-w-2xl mx-auto shadow-sm animate-scale-up">
-            <span className="text-5xl block mb-4">📍</span>
-            <h3 className="text-lg font-bold text-foreground m-0 px-4">
-              Sorry, we are not able to deliver to pincode &quot;{userPincode}&quot;
-            </h3>
-            <p className="text-muted-text text-xs mt-2 max-w-md mx-auto px-6 leading-relaxed">
-              Our partner certified nurseries currently do not serve this location. Please try using another pincode or check out general listings.
-            </p>
-            <div className="flex justify-center gap-3 mt-6 flex-wrap px-4">
-              <button
-                type="button"
-                onClick={handleClearPincode}
-                className="bg-brand-primary text-white border-none py-2.5 px-6 rounded-xl text-xs font-bold cursor-pointer hover:bg-brand-dark transition-all shadow-sm"
-              >
-                Use Another Pincode
-              </button>
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
+            {visibleItems.map((item, idx) => (
+              <ShopItemCard key={item.id} item={item} index={idx} />
+            ))}
           </div>
         ) : isAnyFilterActive ? (
           <div className="text-center py-20 bg-panel border border-line rounded-[24px] max-w-2xl mx-auto shadow-sm animate-scale-up">
@@ -805,7 +561,7 @@ export default function ShopCatalogClient({
               No results found for applied filters
             </h3>
             <p className="text-muted-text text-xs mt-2 max-w-md mx-auto px-6 leading-relaxed">
-              Aapke select kiye gaye combination (Category/Tag/Search) ke liye koi item available nahi hai. Kripya filters badlein ya reset karein.
+              No items match your selected filter combination. Please modify or clear your filters.
             </p>
             <div className="flex justify-center gap-3 mt-6 flex-wrap px-4">
               <button
@@ -821,7 +577,7 @@ export default function ShopCatalogClient({
           <div className="text-center py-20 bg-panel border border-line rounded-[24px]">
             <span className="text-5xl block mb-4">🌵</span>
             <h3 className="text-sm font-bold text-foreground m-0">No Marketplace Asset Found</h3>
-            <p className="text-muted-text text-xs mt-1">System parameters ya Filter reset karke check kijiye.</p>
+            <p className="text-muted-text text-xs mt-1">Please check back soon or reset filters.</p>
             <button
               type="button"
               onClick={handleResetFilters}
@@ -851,10 +607,11 @@ export default function ShopCatalogClient({
                   type="button"
                   key={pageNum}
                   onClick={() => setCurrentPage(pageNum)}
-                  className={`w-9 h-9 text-xs font-bold rounded-xl border transition-all ${currentPage === pageNum
-                    ? "bg-brand-primary text-white border-brand-primary shadow-sm"
-                    : "bg-panel text-muted-text border-line hover:text-foreground"
-                    }`}
+                  className={`w-9 h-9 text-xs font-bold rounded-xl border transition-all ${
+                    currentPage === pageNum
+                      ? "bg-brand-primary text-white border-brand-primary shadow-sm"
+                      : "bg-panel text-muted-text border-line hover:text-foreground"
+                  }`}
                 >
                   {pageNum}
                 </button>

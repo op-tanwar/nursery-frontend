@@ -7,7 +7,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setNurseryLoading, setNurseryError } from "@/redux/slices/nurserySlice";
-import { artificialDriedPlantService } from "@/services/artificialDriedPlantService";
+import { nurseryService } from "@/services/nurseryService";
 import {
   ArrowLeft,
   Plus,
@@ -92,7 +92,7 @@ export default function EditArtificialDriedPlantPage() {
     const fetchPlantData = async () => {
       dispatch(setNurseryLoading(true));
       try {
-        const response = await artificialDriedPlantService.getArtificialDetails(`${plantId}?t=${Date.now()}`);
+        const response = await nurseryService.getArtificialDetails(`${plantId}?t=${Date.now()}`);
         const plant = response?.artificialDriedPlant || response?.artificial || response?.data || response;
 
         setName(plant.name || "");
@@ -260,7 +260,7 @@ export default function EditArtificialDriedPlantPage() {
         formData.append("galleryImages", item.file);
       });
 
-      await artificialDriedPlantService.updateArtificial(plantId, formData);
+      await nurseryService.updateArtificial(plantId, formData);
       toast.success("Artificial/Dried Plant updated successfully!", { id: loadingToast });
       router.push("/nursery/artificial-dried-plants");
     } catch (err: any) {

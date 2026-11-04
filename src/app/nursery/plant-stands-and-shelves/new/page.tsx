@@ -7,7 +7,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setNurseryLoading, setNurseryError } from "@/redux/slices/nurserySlice";
-import { plantStandsShelvesService } from "@/services/plantStandsShelvesService";
+import { nurseryService } from "@/services/nurseryService";
 import { ArrowLeft, Plus, Trash2, Image as ImageIcon, Loader2, Layers, CheckCircle } from "lucide-react";
 
 const STAND_CATEGORIES = [
@@ -137,7 +137,7 @@ export default function CreatePlantStandsShelvesPage() {
       formData.append("coverImage", coverImage);
       galleryImages.forEach((file) => formData.append("images", file));
 
-      await plantStandsShelvesService.createPlantStandsShelves(formData);
+      await nurseryService.createPlantStandsShelves(formData);
       toast.success("Plant Stand asset deployed successfully!", { id: loadingToast });
       router.push("/nursery/plant-stands-and-shelves");
     } catch (err: any) {

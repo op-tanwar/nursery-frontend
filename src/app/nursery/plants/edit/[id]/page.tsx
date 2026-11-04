@@ -12,7 +12,7 @@ import {
   updatePlantInNurseryState
 } from "@/redux/slices/nurserySlice";
 import { nurseryService } from "@/services/nurseryService";
-import { plantService } from "@/services/PlantsService";
+import { productService } from "@/services/productService";
 import { ArrowLeft, Plus, Trash2, Image as ImageIcon, Loader2, Leaf, Save, AlertCircle } from "lucide-react";
 import {
   ProductGalleryManager,
@@ -78,8 +78,8 @@ export default function EditPlantPage() {
       try {
         let targetedPlant: any = null;
         try {
-          const directRes = await plantService.getPlantDetails(`${plantId}?t=${Date.now()}`);
-          targetedPlant = directRes?.plant || directRes?.data;
+          const directRes = await productService.getProductByIdOrSlug(plantId);
+          targetedPlant = directRes?.product || (directRes as any)?.plant || (directRes as any)?.data;
         } catch {
           // fallback to inventory list
         }

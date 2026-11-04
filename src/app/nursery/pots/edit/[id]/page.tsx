@@ -12,7 +12,7 @@ import {
   updatePotInNurseryState
 } from "@/redux/slices/nurserySlice";
 import { nurseryService } from "@/services/nurseryService";
-import { potService } from "@/services/potService";
+import { productService } from "@/services/productService";
 import {
   ProductGalleryManager,
   IGalleryImageItem,
@@ -80,8 +80,8 @@ export default function EditPotConfigurationPage() {
       try {
         let targetedPot: any = null;
         try {
-          const directRes = await potService.getPotDetails(`${potId}?t=${Date.now()}`);
-          targetedPot = directRes?.pot || directRes?.data;
+          const directRes = await productService.getProductByIdOrSlug(potId);
+          targetedPot = directRes?.product || (directRes as any)?.pot || (directRes as any)?.data;
         } catch {
           // fallback to inventory list
         }

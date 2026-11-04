@@ -7,7 +7,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setNurseryLoading, setNurseryError } from "@/redux/slices/nurserySlice";
-import { plantStandsShelvesService } from "@/services/plantStandsShelvesService";
+import { nurseryService } from "@/services/nurseryService";
 import {
   ProductGalleryManager,
   IGalleryImageItem,
@@ -69,7 +69,7 @@ export default function EditStandsShelvesPage() {
     const fetchStandData = async () => {
       dispatch(setNurseryLoading(true));
       try {
-        const response = await plantStandsShelvesService.getPlantStandsShelvesDetails(`${standId}?t=${Date.now()}`);
+        const response = await nurseryService.getPlantStandsShelvesDetails(`${standId}?t=${Date.now()}`);
         const item = response.plantStandsShelves || response?.data || response;
 
         setName(item.name || "");
@@ -255,7 +255,7 @@ export default function EditStandsShelvesPage() {
         formData.append("galleryImages", item.file);
       });
 
-      await plantStandsShelvesService.updatePlantStandsShelves(standId, formData);
+      await nurseryService.updatePlantStandsShelves(standId, formData);
       toast.success("Stand/Shelf details saved!", { id: loadingToast });
       router.push("/nursery/plant-stands-and-shelves");
     } catch (err: any) {

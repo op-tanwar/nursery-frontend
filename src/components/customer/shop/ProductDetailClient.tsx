@@ -16,14 +16,7 @@ const SuggestionsSection = lazy(() => import("@/components/customer/shop/Suggest
 const ProductTabsSection = lazy(() => import("@/components/customer/shop/ProductTabsSection"));
 const RelatedProductsSection = lazy(() => import("@/components/customer/shop/RelatedProductsSection"));
 
-import { plantService } from "@/services/PlantsService";
-import { potService } from "@/services/potService";
-import { accessoryService } from "@/services/accessoryService";
-import { gardeningToolService } from "@/services/gardeningToolsService";
-import { plantCareService } from "@/services/plantCareService";
-import { seedsBulbsService } from "@/services/seedsBulbsService";
-import { plantStandsShelvesService } from "@/services/plantStandsShelvesService";
-import { artificialDriedPlantService } from "@/services/artificialDriedPlantService";
+import { productService } from "@/services/productService";
 
 import type { ServerProductData, ShopUrlType } from "@/services/server/productServerService";
 
@@ -71,10 +64,10 @@ function toStringArray(value: unknown): string[] {
   return [];
 }
 
-function extractCareInstructions(raw: any): string[] {
+function extractCareInstructions(raw: any, attrs: any = {}): string[] {
   const candidates = [
-    raw.careInstructions, raw.howToUse, raw.dosageInstructions,
-    raw.tips, raw.sowingSteps, raw.assemblyInstructions, raw.features,
+    raw.careInstructions, attrs.careInstructions, raw.howToUse, attrs.howToUse,
+    raw.dosageInstructions, raw.tips, raw.sowingSteps, raw.assemblyInstructions, raw.features,
   ];
   for (const c of candidates) {
     const arr = toStringArray(c);
@@ -85,18 +78,18 @@ function extractCareInstructions(raw: any): string[] {
   return ["See product description for usage details."];
 }
 
-function extractBenefits(raw: any): string[] {
-  const candidates = [raw.benefits, raw.features, raw.ingredients];
+function extractBenefits(raw: any, attrs: any = {}): string[] {
+  const candidates = [raw.benefits, attrs.benefits, raw.features, attrs.features, raw.ingredients];
   for (const c of candidates) {
     const arr = toStringArray(c);
     if (arr.length) return arr;
   }
   const bits: string[] = [];
-  if (raw.sowingSeason) bits.push(`Sowing season: ${raw.sowingSeason}`);
-  if (raw.material) bits.push(`Material: ${raw.material}`);
-  if (raw.composition) bits.push(`Composition: ${raw.composition}`);
-  if (raw.formType) bits.push(`Form: ${raw.formType}`);
-  if (raw.netQuantity) bits.push(`Net quantity: ${raw.netQuantity}`);
+  if (attrs.sowingSeason || raw.sowingSeason) bits.push(`Sowing season: ${attrs.sowingSeason || raw.sowingSeason}`);
+  if (attrs.material || raw.material) bits.push(`Material: ${attrs.material || raw.material}`);
+  if (attrs.composition || raw.composition) bits.push(`Composition: ${attrs.composition || raw.composition}`);
+  if (attrs.formType || raw.formType) bits.push(`Form: ${attrs.formType || raw.formType}`);
+  if (attrs.netQuantity || raw.netQuantity) bits.push(`Net quantity: ${attrs.netQuantity || raw.netQuantity}`);
   if (bits.length) return bits;
   return ["Premium quality marketplace selection."];
 }
@@ -121,66 +114,29 @@ function extractRawProduct(res: any, targetType: ShopUrlType): any {
  * Uses sessionStorage cache and axios-based services (browser-only APIs).
  */
 async function resolveProductClientFallback(
-  shopType: ShopUrlType,
+  _shopType: ShopUrlType,
   urlSlug: string
 ): Promise<{ rawProduct: any; discoveredId: string } | null> {
-  // Strategy 1: Try slug endpoint via axios (for cases server missed)
   try {
-    let slugRes: any = null;
-    if (shopType === "plants") slugRes = await plantService.getPlantBySlug(urlSlug);
-    else if (shopType === "pots") slugRes = await potService.getPotBySlug(urlSlug);
-    else if (shopType === "accessories") slugRes = await accessoryService.getAccessoryBySlug(urlSlug);
-    else if (shopType === "gardening-tools") slugRes = await gardeningToolService.getGardeningToolBySlug(urlSlug);
-    else if (shopType === "plant-care") slugRes = await plantCareService.getPlantCareBySlug(urlSlug);
-    else if (shopType === "seeds-bulbs") slugRes = await seedsBulbsService.getSeedsBulbsBySlug(urlSlug);
-    else if (shopType === "plant-stands-shelves") slugRes = await plantStandsShelvesService.getPlantStandsShelvesBySlug(urlSlug);
-    else if (shopType === "artificial-dried-plants") slugRes = await artificialDriedPlantService.getArtificialBySlug(urlSlug);
-
-    if (slugRes) {
-      const rawProduct = extractRawProduct(slugRes, shopType);
-      if (rawProduct) return { rawProduct, discoveredId: rawProduct._id || rawProduct.id || urlSlug };
+    const res = await productService.getProductByIdOrSlug(urlSlug);
+    if (res?.product) {
+      return { rawProduct: res.product, discoveredId: res.product._id || urlSlug };
     }
-  } catch { /* fall through */ }
-
-  // Strategy 2: Direct ObjectId lookup
-  if (urlSlug.match(/^[0-9a-fA-F]{24}$/)) {
-    try {
-      let res: any = null;
-      if (shopType === "plants") res = await plantService.getPlantDetails(urlSlug);
-      else if (shopType === "pots") res = await potService.getPotDetails(urlSlug);
-      else if (shopType === "accessories") res = await accessoryService.getAccessoryDetails(urlSlug);
-      else if (shopType === "gardening-tools") res = await gardeningToolService.getGardeningToolDetails(urlSlug);
-      else if (shopType === "plant-care") res = await plantCareService.getPlantCareDetails(urlSlug);
-      else if (shopType === "seeds-bulbs") res = await seedsBulbsService.getSeedsBulbsDetails(urlSlug);
-      else if (shopType === "plant-stands-shelves") res = await plantStandsShelvesService.getPlantStandsShelvesDetails(urlSlug);
-      else if (shopType === "artificial-dried-plants") res = await artificialDriedPlantService.getArtificialDetails(urlSlug);
-      const rawProduct = extractRawProduct(res, shopType);
-      if (rawProduct) return { rawProduct, discoveredId: urlSlug };
-    } catch { /* fall through */ }
-  }
-
-  // Strategy 3: sessionStorage cache → catalog scan
-  const cacheKey = `shop_item_id_${urlSlug}`;
-  const cachedId = sessionStorage.getItem(cacheKey);
-
-  if (cachedId) {
-    try {
-      let res: any = null;
-      if (shopType === "plants") res = await plantService.getPlantDetails(cachedId);
-      else if (shopType === "pots") res = await potService.getPotDetails(cachedId);
-      else if (shopType === "accessories") res = await accessoryService.getAccessoryDetails(cachedId);
-      else if (shopType === "gardening-tools") res = await gardeningToolService.getGardeningToolDetails(cachedId);
-      else if (shopType === "plant-care") res = await plantCareService.getPlantCareDetails(cachedId);
-      else if (shopType === "seeds-bulbs") res = await seedsBulbsService.getSeedsBulbsDetails(cachedId);
-      else if (shopType === "plant-stands-shelves") res = await plantStandsShelvesService.getPlantStandsShelvesDetails(cachedId);
-      else if (shopType === "artificial-dried-plants") res = await artificialDriedPlantService.getArtificialDetails(cachedId);
-      const rawProduct = extractRawProduct(res, shopType);
-      if (rawProduct) return { rawProduct, discoveredId: cachedId };
-    } catch {
-      sessionStorage.removeItem(cacheKey);
+  } catch {
+    // Strategy 2: Check sessionStorage cache
+    const cacheKey = `shop_item_id_${urlSlug}`;
+    const cachedId = typeof window !== "undefined" ? sessionStorage.getItem(cacheKey) : null;
+    if (cachedId) {
+      try {
+        const cachedRes = await productService.getProductByIdOrSlug(cachedId);
+        if (cachedRes?.product) {
+          return { rawProduct: cachedRes.product, discoveredId: cachedId };
+        }
+      } catch {
+        sessionStorage.removeItem(cacheKey);
+      }
     }
   }
-
   return null;
 }
 
@@ -188,55 +144,24 @@ async function fetchRelatedAndCrossSell(
   shopType: ShopUrlType,
   currentItemId: string
 ): Promise<{ relatedList: any[]; crossList: any[] }> {
-  let relatedPromise: Promise<any>;
-  let crossPromise: Promise<any>;
+  try {
+    const [relatedRes, crossRes] = await Promise.all([
+      productService.getProducts({ category: shopType as any, limit: 5 }),
+      productService.getProducts({ limit: 4 }),
+    ]);
 
-  if (shopType === "plants") {
-    relatedPromise = plantService.getAllPlants("limit=5");
-    crossPromise = potService.getAllPots("limit=3");
-  } else if (shopType === "pots") {
-    relatedPromise = potService.getAllPots("limit=5");
-    crossPromise = plantService.getAllPlants("limit=3");
-  } else if (shopType === "accessories") {
-    relatedPromise = typeof accessoryService.getAllAccessories === "function"
-      ? accessoryService.getAllAccessories("limit=5")
-      : Promise.resolve(null);
-    crossPromise = plantService.getAllPlants("limit=3");
-  } else if (shopType === "gardening-tools") {
-    relatedPromise = gardeningToolService.getAllGardeningTools("limit=5");
-    crossPromise = plantService.getAllPlants("limit=3");
-  } else if (shopType === "plant-care") {
-    relatedPromise = plantCareService.getAllPlantCare("limit=5");
-    crossPromise = plantService.getAllPlants("limit=3");
-  } else if (shopType === "seeds-bulbs") {
-    relatedPromise = seedsBulbsService.getAllSeedsBulbs("limit=5");
-    crossPromise = plantService.getAllPlants("limit=3");
-  } else if (shopType === "plant-stands-shelves") {
-    relatedPromise = plantStandsShelvesService.getAllPlantStandsShelves("limit=5");
-    crossPromise = plantService.getAllPlants("limit=3");
-  } else {
-    relatedPromise = artificialDriedPlantService.getAllArtificials("limit=5");
-    crossPromise = plantService.getAllPlants("limit=3");
+    const relatedList = (relatedRes.products || [])
+      .filter((p: any) => (p._id || p.id) !== currentItemId)
+      .slice(0, 4);
+
+    const crossList = (crossRes.products || [])
+      .filter((p: any) => (p._id || p.id) !== currentItemId)
+      .slice(0, 3);
+
+    return { relatedList, crossList };
+  } catch {
+    return { relatedList: [], crossList: [] };
   }
-
-  const [relatedRes, crossRes] = await Promise.all([relatedPromise, crossPromise]);
-
-  let relatedList: any[] = [];
-  let crossList: any[] = [];
-
-  if (shopType === "plants") { relatedList = (relatedRes as any)?.plants || []; crossList = (crossRes as any)?.pots || []; }
-  else if (shopType === "pots") { relatedList = (relatedRes as any)?.pots || []; crossList = (crossRes as any)?.plants || []; }
-  else if (shopType === "accessories") { relatedList = (relatedRes as any)?.accessories || (Array.isArray(relatedRes) ? relatedRes : []); crossList = (crossRes as any)?.plants || []; }
-  else if (shopType === "gardening-tools") { relatedList = (relatedRes as any)?.gardeningTools || []; crossList = (crossRes as any)?.plants || []; }
-  else if (shopType === "plant-care") { relatedList = (relatedRes as any)?.plantCare || []; crossList = (crossRes as any)?.plants || []; }
-  else if (shopType === "seeds-bulbs") { relatedList = (relatedRes as any)?.seedsBulbs || []; crossList = (crossRes as any)?.plants || []; }
-  else if (shopType === "plant-stands-shelves") { relatedList = (relatedRes as any)?.plantStandsShelves || []; crossList = (crossRes as any)?.plants || []; }
-  else { relatedList = (relatedRes as any)?.artificialDriedPlants || (relatedRes as any)?.artificials || []; crossList = (crossRes as any)?.plants || []; }
-
-  return {
-    relatedList: relatedList.filter((p: any) => (p._id || p.id) !== currentItemId).slice(0, 4),
-    crossList: crossList.slice(0, 3),
-  };
 }
 
 // ─────────────────────────────────────────────
@@ -316,6 +241,8 @@ export default function ProductDetailClient({
           : undefined;
       const maxLoadMatch = rawProduct.description?.match(/Max weight capacity:\s*([^\n]+)/i)?.[1]?.trim();
 
+      const attrs = rawProduct.attributes || {};
+
       const transformed: MarketItemType = {
         id: rawProduct._id || rawProduct.id || discoveredId,
         slug: rawProduct.slug || urlSlug,
@@ -348,39 +275,39 @@ export default function ProductDetailClient({
         emoji: rawProduct.coverImage?.url || FALLBACK_EMOJI[shopType],
         description: rawProduct.description || "No descriptions attached to this item.",
         descriptionOption: rawProduct.descriptionOption || undefined,
-        careInstructions: extractCareInstructions(rawProduct),
-        benefits: extractBenefits(rawProduct),
+        careInstructions: extractCareInstructions(rawProduct, attrs),
+        benefits: extractBenefits(rawProduct, attrs),
         galleryImages: rawProduct.images?.map((img: any) => (typeof img === "string" ? img : img.url)) || [FALLBACK_EMOJI[shopType]],
         verifiedReviews: rawProduct.reviews?.map((rev: any) => ({ author: rev.name || "Anonymous", rating: rev.rating || 5, date: "Recent", comment: rev.comment || "No comment.", verified: true })) || [],
         metaTitle: rawProduct.metaTitle,
         metaDescription: rawProduct.metaDescription,
 
-        // Specifications pass-through
+        // Specifications pass-through (reads from polymorphic attributes or root)
         stock: rawProduct.stock,
-        lightRequirement: rawProduct.lightRequirement,
-        wateringSchedule: rawProduct.wateringSchedule,
-        maintenanceLevel: rawProduct.maintenanceLevel,
-        isPetFriendly: rawProduct.isPetFriendly,
-        material: rawProduct.material || rawProduct.specifications?.material,
-        color: rawProduct.color || rawProduct.specifications?.color,
-        dimensions: rawProduct.dimensions || rawProduct.specifications?.dimensions,
-        hasDrainageHole: rawProduct.hasDrainageHole,
-        shape: rawProduct.shape,
+        lightRequirement: rawProduct.lightRequirement || attrs.lightRequirement,
+        wateringSchedule: rawProduct.wateringSchedule || attrs.wateringSchedule,
+        maintenanceLevel: rawProduct.maintenanceLevel || attrs.maintenanceLevel,
+        isPetFriendly: rawProduct.isPetFriendly ?? attrs.isPetFriendly,
+        material: rawProduct.material || attrs.material || rawProduct.specifications?.material,
+        color: rawProduct.color || attrs.color || rawProduct.specifications?.color,
+        dimensions: rawProduct.dimensions || attrs.dimensions || rawProduct.specifications?.dimensions,
+        hasDrainageHole: rawProduct.hasDrainageHole ?? attrs.drainageHoles,
+        shape: rawProduct.shape || attrs.shape,
         isIndoorOutdoor: rawProduct.isIndoorOutdoor,
         includesSaucer: rawProduct.includesSaucer,
-        handleMaterial: rawProduct.handleMaterial,
-        warrantyMonths: rawProduct.warrantyMonths,
-        howToUse: rawProduct.howToUse,
-        composition: rawProduct.composition,
-        volumeOrWeight: rawProduct.volumeOrWeight,
-        formType: rawProduct.formType || formTypeMatch,
+        handleMaterial: rawProduct.handleMaterial || attrs.handleMaterial,
+        warrantyMonths: rawProduct.warrantyMonths || attrs.warrantyMonths,
+        howToUse: rawProduct.howToUse || attrs.howToUse,
+        composition: rawProduct.composition || attrs.composition,
+        volumeOrWeight: rawProduct.volumeOrWeight || attrs.volumeOrWeight,
+        formType: rawProduct.formType || attrs.formType || formTypeMatch,
         isOrganic: isOrganicDerived,
-        sowingSeason: rawProduct.sowingSeason,
-        germinationTime: rawProduct.germinationTime,
-        quantityPerPack: rawProduct.quantityPerPack,
-        tierCount: rawProduct.tierCount,
-        maxLoadCapacity: rawProduct.maxLoadCapacity || maxLoadMatch,
-        specifications: rawProduct.specifications,
+        sowingSeason: rawProduct.sowingSeason || attrs.sowingSeason,
+        germinationTime: rawProduct.germinationTime || attrs.germinationTime,
+        quantityPerPack: rawProduct.quantityPerPack || attrs.quantityPerPack,
+        tierCount: rawProduct.tierCount || attrs.tierCount,
+        maxLoadCapacity: rawProduct.maxLoadCapacity || attrs.maxLoadCapacity || maxLoadMatch,
+        specifications: rawProduct.specifications || attrs,
         rawSpecifications: rawProduct,
       };
 

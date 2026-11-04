@@ -7,7 +7,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setNurseryLoading, setNurseryError } from "@/redux/slices/nurserySlice";
-import { seedsBulbsService } from "@/services/seedsBulbsService";
+import { nurseryService } from "@/services/nurseryService";
 import { ArrowLeft, Plus, Trash2, Image as ImageIcon, Loader2, Sprout, CheckCircle } from "lucide-react";
 
 const SEED_CATEGORIES = [
@@ -123,7 +123,7 @@ export default function CreateSeedsBulbsPage() {
       formData.append("coverImage", coverImage);
       galleryImages.forEach((file) => formData.append("images", file));
 
-      await seedsBulbsService.createSeedsBulbs(formData);
+      await nurseryService.createSeedsBulbs(formData);
       toast.success("Seeds & Bulbs item registered successfully!", { id: loadingToast });
       router.push("/nursery/seeds-bulbs");
     } catch (err: any) {

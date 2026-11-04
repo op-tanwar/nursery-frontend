@@ -111,7 +111,7 @@ export default function CreatePotPage() {
     try {
       const formData = new FormData();
 
-      // Strict schema structure mapping matching potsModel requirements
+      // Strict schema structure mapping matching Product requirements
       const potDataJson = {
         name,
         description,

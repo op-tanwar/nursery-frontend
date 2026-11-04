@@ -68,7 +68,7 @@ export interface ShopItemType {
 
 interface ShopItemCardProps {
   item: ShopItemType;
-  index: number;
+  index?: number;
 }
 
 export function StarRating({ rating }: { rating: number }) {
@@ -88,7 +88,7 @@ export function StarRating({ rating }: { rating: number }) {
   );
 }
 
-export default function ShopItemCard({ item, index }: ShopItemCardProps) {
+export default function ShopItemCard({ item, index = 0 }: ShopItemCardProps) {
   const dispatch = useDispatch();
 
   // Local Loading States

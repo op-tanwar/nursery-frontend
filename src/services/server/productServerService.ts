@@ -1,8 +1,6 @@
 /**
  * Server-side product resolver for the PDP (Product Detail Page).
- * Uses native fetch() with Next.js ISR caching.
- * Only implements Strategy 1 (direct slug endpoint) — the safe server path.
- * Strategies 2 & 3 (sessionStorage cache, catalog scan) stay client-side.
+ * Uses native fetch() with Next.js ISR caching against the unified Product API.
  */
 
 import { cache } from "react";
@@ -43,36 +41,9 @@ export const FALLBACK_EMOJI: Record<ShopUrlType, string> = {
   "artificial-dried-plants": "🥀",
 };
 
-// Slug endpoint paths per category
-const SLUG_ENDPOINT: Record<ShopUrlType, string> = {
-  plants: "plants/plant/slug",
-  pots: "pots/pot/slug",
-  accessories: "accessories/accessory/slug",
-  "gardening-tools": "gardening-tools/gardening-tool/slug",
-  "plant-care": "plant-care/plant-care/slug",
-  "seeds-bulbs": "seeds-bulbs/seeds-bulbs/slug",
-  "plant-stands-shelves": "plant-stands-shelves/plant-stands-shelves/slug",
-  "artificial-dried-plants": "artificial-dried-plants/artificial/slug",
-};
-
-// Key to extract the product object from each API response
-const RESPONSE_KEY: Record<ShopUrlType, string[]> = {
-  plants: ["plant"],
-  pots: ["pot"],
-  accessories: ["accessory"],
-  "gardening-tools": ["gardeningTool"],
-  "plant-care": ["plantCare"],
-  "seeds-bulbs": ["seedsBulbs"],
-  "plant-stands-shelves": ["plantStandsShelves"],
-  "artificial-dried-plants": ["artificialDriedPlant", "artificial"],
-};
-
-function extractRawProduct(data: any, shopType: ShopUrlType): any {
+function extractRawProduct(data: any): any {
   if (!data) return null;
-  for (const key of RESPONSE_KEY[shopType]) {
-    if (data[key]) return data[key];
-  }
-  // Some endpoints return the object directly
+  if (data.product) return data.product;
   if (data._id || data.name) return data;
   return null;
 }
@@ -83,10 +54,10 @@ function toStringArray(value: unknown): string[] {
   return [];
 }
 
-function extractCareInstructions(raw: any): string[] {
+function extractCareInstructions(raw: any, attrs: any = {}): string[] {
   const candidates = [
-    raw.careInstructions, raw.howToUse, raw.dosageInstructions,
-    raw.tips, raw.sowingSteps, raw.assemblyInstructions, raw.features,
+    raw.careInstructions, attrs.careInstructions, raw.howToUse, attrs.howToUse,
+    raw.dosageInstructions, raw.tips, raw.sowingSteps, raw.assemblyInstructions, raw.features,
   ];
   for (const c of candidates) {
     const arr = toStringArray(c);
@@ -97,18 +68,17 @@ function extractCareInstructions(raw: any): string[] {
   return ["See product description for usage details."];
 }
 
-function extractBenefits(raw: any): string[] {
-  const candidates = [raw.benefits, raw.features, raw.ingredients];
+function extractBenefits(raw: any, attrs: any = {}): string[] {
+  const candidates = [raw.benefits, attrs.benefits, raw.features, attrs.features, raw.ingredients];
   for (const c of candidates) {
     const arr = toStringArray(c);
     if (arr.length) return arr;
   }
   const bits: string[] = [];
-  if (raw.sowingSeason) bits.push(`Sowing season: ${raw.sowingSeason}`);
-  if (raw.material) bits.push(`Material: ${raw.material}`);
-  if (raw.composition) bits.push(`Composition: ${raw.composition}`);
-  if (raw.formType) bits.push(`Form: ${raw.formType}`);
-  if (raw.netQuantity) bits.push(`Net quantity: ${raw.netQuantity}`);
+  if (attrs.sowingSeason || raw.sowingSeason) bits.push(`Sowing season: ${attrs.sowingSeason || raw.sowingSeason}`);
+  if (attrs.material || raw.material) bits.push(`Material: ${attrs.material || raw.material}`);
+  if (attrs.composition || raw.composition) bits.push(`Composition: ${attrs.composition || raw.composition}`);
+  if (attrs.formType || raw.formType) bits.push(`Form: ${attrs.formType || raw.formType}`);
   if (bits.length) return bits;
   return ["Premium quality marketplace selection."];
 }
@@ -187,22 +157,17 @@ export interface ServerProductData {
 }
 
 /**
- * Fetches and transforms a product by slug on the server.
- * Returns null on any failure — client shell handles fallback resolution.
- * Wrapped in React cache() so generateMetadata + page share one fetch per request.
+ * Fetches and transforms a product by slug on the server using unified /products endpoint.
  */
 export const resolveProductServer = cache(async function resolveProductServer(
   shopType: ShopUrlType,
   slug: string
 ): Promise<ServerProductData | null> {
   try {
-    const endpoint = SLUG_ENDPOINT[shopType];
-    if (!endpoint) return null;
-
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    const res = await fetch(`${API_BASE_URL}/${endpoint}/${slug}`, {
+    const res = await fetch(`${API_BASE_URL}/products/${encodeURIComponent(slug)}`, {
       next: { revalidate: 60, tags: [`product-${shopType}-${slug}`] },
       signal: controller.signal,
     });
@@ -212,9 +177,10 @@ export const resolveProductServer = cache(async function resolveProductServer(
     if (!res.ok) return null;
 
     const data = await res.json();
-    const raw = extractRawProduct(data, shopType);
+    const raw = extractRawProduct(data);
     if (!raw) return null;
 
+    const attrs = raw.attributes || {};
     const nurseryObj = typeof raw.nursery === "object" ? raw.nursery : null;
     const vendorObj = typeof raw.vendor === "object" ? raw.vendor : null;
 
@@ -241,7 +207,6 @@ export const resolveProductServer = cache(async function resolveProductServer(
       raw.nurseryId || nurseryObj?.nurseryId || vendorObj?.nurseryId ||
       (typeof raw.nursery === "string" ? raw.nursery : undefined);
 
-    // Smart fallback extraction for backward-compatible metadata in description
     const formTypeMatch = raw.description?.match(/Form:\s*([^|\n]+)/i)?.[1]?.trim();
     const isOrganicDerived =
       raw.isOrganic !== undefined
@@ -270,16 +235,16 @@ export const resolveProductServer = cache(async function resolveProductServer(
         raw.discountPrice > 0 && raw.discountPrice < raw.price
           ? raw.price || 0
           : null,
-      rating: raw.ratings || raw.rating || 4.5,
-      reviews: raw.numOfReviews || raw.reviews?.length || 0,
-      badge: raw.stock > 0 ? "In Stock" : "Unavailable",
-      badgeColor: raw.stock > 0 ? "#15803d" : "#dc2626",
+      rating: raw.ratingsAverage || raw.ratings || raw.rating || 4.5,
+      reviews: raw.ratingsQuantity || raw.numOfReviews || raw.reviews?.length || 0,
+      badge: (raw.stock ?? 0) > 0 ? "In Stock" : "Unavailable",
+      badgeColor: (raw.stock ?? 0) > 0 ? "#15803d" : "#dc2626",
       tag: determineProductTag({
         ...raw,
-        ratings: raw.ratings || raw.rating,
-        reviewsCount: raw.numOfReviews || raw.reviews?.length,
+        ratings: raw.ratingsAverage || raw.ratings || raw.rating,
+        reviewsCount: raw.ratingsQuantity || raw.numOfReviews || raw.reviews?.length,
       }),
-      emoji: raw.coverImage?.url || FALLBACK_EMOJI[shopType],
+      emoji: raw.coverImage?.url || raw.images?.[0]?.url || FALLBACK_EMOJI[shopType],
       isBestSeller: raw.isBestSeller ?? raw.isBestseller,
       isBestseller: raw.isBestseller ?? raw.isBestSeller,
       isFeatured: raw.isFeatured,
@@ -290,8 +255,8 @@ export const resolveProductServer = cache(async function resolveProductServer(
       discountPrice: raw.discountPrice,
       description: raw.description || "No descriptions attached to this item.",
       descriptionOption: raw.descriptionOption || undefined,
-      careInstructions: extractCareInstructions(raw),
-      benefits: extractBenefits(raw),
+      careInstructions: extractCareInstructions(raw, attrs),
+      benefits: extractBenefits(raw, attrs),
       galleryImages:
         raw.images?.map((img: any) => (typeof img === "string" ? img : img.url)) ||
         [FALLBACK_EMOJI[shopType]],
@@ -299,39 +264,39 @@ export const resolveProductServer = cache(async function resolveProductServer(
         raw.reviews?.map((rev: any) => ({
           author: rev.name || "Anonymous",
           rating: rev.rating || 5,
-          date: "Recent",
+          date: rev.createdAt ? new Date(rev.createdAt).toLocaleDateString() : "Recent",
           comment: rev.comment || "No comment.",
           verified: true,
         })) || [],
       metaTitle: raw.metaTitle,
       metaDescription: raw.metaDescription,
 
-      // Specifications pass-through
+      // Specifications pass-through (reads from unified attributes or root)
       stock: raw.stock,
-      lightRequirement: raw.lightRequirement,
-      wateringSchedule: raw.wateringSchedule,
-      maintenanceLevel: raw.maintenanceLevel,
-      isPetFriendly: raw.isPetFriendly,
-      material: raw.material || raw.specifications?.material,
-      color: raw.color || raw.specifications?.color,
-      dimensions: raw.dimensions || raw.specifications?.dimensions,
-      hasDrainageHole: raw.hasDrainageHole,
-      shape: raw.shape,
+      lightRequirement: raw.lightRequirement || attrs.lightRequirement,
+      wateringSchedule: raw.wateringSchedule || attrs.wateringSchedule,
+      maintenanceLevel: raw.maintenanceLevel || attrs.maintenanceLevel,
+      isPetFriendly: raw.isPetFriendly ?? attrs.isPetFriendly,
+      material: raw.material || attrs.material || raw.specifications?.material,
+      color: raw.color || attrs.color || raw.specifications?.color,
+      dimensions: raw.dimensions || attrs.dimensions || raw.specifications?.dimensions,
+      hasDrainageHole: raw.hasDrainageHole ?? attrs.drainageHoles,
+      shape: raw.shape || attrs.shape,
       isIndoorOutdoor: raw.isIndoorOutdoor,
       includesSaucer: raw.includesSaucer,
-      handleMaterial: raw.handleMaterial,
-      warrantyMonths: raw.warrantyMonths,
-      howToUse: raw.howToUse,
-      composition: raw.composition,
-      volumeOrWeight: raw.volumeOrWeight,
-      formType: raw.formType || formTypeMatch,
+      handleMaterial: raw.handleMaterial || attrs.handleMaterial,
+      warrantyMonths: raw.warrantyMonths || attrs.warrantyMonths,
+      howToUse: raw.howToUse || attrs.howToUse,
+      composition: raw.composition || attrs.composition,
+      volumeOrWeight: raw.volumeOrWeight || attrs.volumeOrWeight,
+      formType: raw.formType || attrs.formType || formTypeMatch,
       isOrganic: isOrganicDerived,
-      sowingSeason: raw.sowingSeason,
-      germinationTime: raw.germinationTime,
-      quantityPerPack: raw.quantityPerPack,
-      tierCount: raw.tierCount,
-      maxLoadCapacity: raw.maxLoadCapacity || maxLoadMatch,
-      specifications: raw.specifications,
+      sowingSeason: raw.sowingSeason || attrs.sowingSeason,
+      germinationTime: raw.germinationTime || attrs.germinationTime,
+      quantityPerPack: raw.quantityPerPack || attrs.quantityPerPack,
+      tierCount: raw.tierCount || attrs.tierCount,
+      maxLoadCapacity: raw.maxLoadCapacity || attrs.maxLoadCapacity || maxLoadMatch,
+      specifications: raw.specifications || attrs,
       rawSpecifications: raw,
     };
   } catch {

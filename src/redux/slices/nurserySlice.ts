@@ -41,6 +41,11 @@ interface NurseryState {
   nurseryPlants: BaseNurseryProduct[];
   nurseryPots: BaseNurseryProduct[];
   nurseryAccessories: BaseNurseryProduct[];
+  nurseryGardeningTools: BaseNurseryProduct[];
+  nurseryPlantCare: BaseNurseryProduct[];
+  nurserySeedsBulbs: BaseNurseryProduct[];
+  nurseryPlantStandsShelves: BaseNurseryProduct[];
+  nurseryArtificials: BaseNurseryProduct[];
   orders: NurseryOrder[];
   currentSelectedPlant: BaseNurseryProduct | null;
   currentSelectedPot: BaseNurseryProduct | null;
@@ -54,6 +59,11 @@ const initialState: NurseryState = {
   nurseryPlants: [],
   nurseryPots: [],
   nurseryAccessories: [],
+  nurseryGardeningTools: [],
+  nurseryPlantCare: [],
+  nurserySeedsBulbs: [],
+  nurseryPlantStandsShelves: [],
+  nurseryArtificials: [],
   orders: [],
   currentSelectedPlant: null,
   currentSelectedPot: null,
@@ -137,7 +147,7 @@ const nurserySlice = createSlice({
     },
 
     // ======================================================================
-    // 🛠️ GARDENING ACCESSORIES & TOOLS STATE MATRIX
+    // 🛠️ GARDENING ACCESSORIES STATE MATRIX
     // ======================================================================
     setNurseryAccessories: (state, action: PayloadAction<BaseNurseryProduct[]>) => {
       state.nurseryAccessories = action.payload;
@@ -160,6 +170,121 @@ const nurserySlice = createSlice({
     },
     setSingleAccessoryDetails: (state, action: PayloadAction<BaseNurseryProduct>) => {
       state.currentSelectedAccessory = action.payload;
+      state.isLoading = false;
+    },
+
+    // ======================================================================
+    // 🔧 GARDENING TOOLS STATE MATRIX
+    // ======================================================================
+    setNurseryGardeningTools: (state, action: PayloadAction<BaseNurseryProduct[]>) => {
+      state.nurseryGardeningTools = action.payload;
+      state.isLoading = false;
+      state.error = null;
+    },
+    addGardeningToolToNurseryState: (state, action: PayloadAction<BaseNurseryProduct>) => {
+      state.nurseryGardeningTools = [action.payload, ...state.nurseryGardeningTools];
+      state.isLoading = false;
+    },
+    updateGardeningToolInNurseryState: (state, action: PayloadAction<BaseNurseryProduct>) => {
+      state.nurseryGardeningTools = state.nurseryGardeningTools.map((item) =>
+        item._id === action.payload._id ? action.payload : item
+      );
+      state.isLoading = false;
+    },
+    deleteGardeningToolFromNurseryState: (state, action: PayloadAction<string>) => {
+      state.nurseryGardeningTools = state.nurseryGardeningTools.filter((item) => item._id !== action.payload);
+      state.isLoading = false;
+    },
+
+    // ======================================================================
+    // 🧪 PLANT CARE STATE MATRIX
+    // ======================================================================
+    setNurseryPlantCare: (state, action: PayloadAction<BaseNurseryProduct[]>) => {
+      state.nurseryPlantCare = action.payload;
+      state.isLoading = false;
+      state.error = null;
+    },
+    addPlantCareToNurseryState: (state, action: PayloadAction<BaseNurseryProduct>) => {
+      state.nurseryPlantCare = [action.payload, ...state.nurseryPlantCare];
+      state.isLoading = false;
+    },
+    updatePlantCareInNurseryState: (state, action: PayloadAction<BaseNurseryProduct>) => {
+      state.nurseryPlantCare = state.nurseryPlantCare.map((item) =>
+        item._id === action.payload._id ? action.payload : item
+      );
+      state.isLoading = false;
+    },
+    deletePlantCareFromNurseryState: (state, action: PayloadAction<string>) => {
+      state.nurseryPlantCare = state.nurseryPlantCare.filter((item) => item._id !== action.payload);
+      state.isLoading = false;
+    },
+
+    // ======================================================================
+    // 🌱 SEEDS & BULBS STATE MATRIX
+    // ======================================================================
+    setNurserySeedsBulbs: (state, action: PayloadAction<BaseNurseryProduct[]>) => {
+      state.nurserySeedsBulbs = action.payload;
+      state.isLoading = false;
+      state.error = null;
+    },
+    addSeedsBulbsToNurseryState: (state, action: PayloadAction<BaseNurseryProduct>) => {
+      state.nurserySeedsBulbs = [action.payload, ...state.nurserySeedsBulbs];
+      state.isLoading = false;
+    },
+    updateSeedsBulbsInNurseryState: (state, action: PayloadAction<BaseNurseryProduct>) => {
+      state.nurserySeedsBulbs = state.nurserySeedsBulbs.map((item) =>
+        item._id === action.payload._id ? action.payload : item
+      );
+      state.isLoading = false;
+    },
+    deleteSeedsBulbsFromNurseryState: (state, action: PayloadAction<string>) => {
+      state.nurserySeedsBulbs = state.nurserySeedsBulbs.filter((item) => item._id !== action.payload);
+      state.isLoading = false;
+    },
+
+    // ======================================================================
+    // 🪜 PLANT STANDS & SHELVES STATE MATRIX
+    // ======================================================================
+    setNurseryPlantStandsShelves: (state, action: PayloadAction<BaseNurseryProduct[]>) => {
+      state.nurseryPlantStandsShelves = action.payload;
+      state.isLoading = false;
+      state.error = null;
+    },
+    addPlantStandsShelvesToNurseryState: (state, action: PayloadAction<BaseNurseryProduct>) => {
+      state.nurseryPlantStandsShelves = [action.payload, ...state.nurseryPlantStandsShelves];
+      state.isLoading = false;
+    },
+    updatePlantStandsShelvesInNurseryState: (state, action: PayloadAction<BaseNurseryProduct>) => {
+      state.nurseryPlantStandsShelves = state.nurseryPlantStandsShelves.map((item) =>
+        item._id === action.payload._id ? action.payload : item
+      );
+      state.isLoading = false;
+    },
+    deletePlantStandsShelvesFromNurseryState: (state, action: PayloadAction<string>) => {
+      state.nurseryPlantStandsShelves = state.nurseryPlantStandsShelves.filter((item) => item._id !== action.payload);
+      state.isLoading = false;
+    },
+
+    // ======================================================================
+    // 🥀 ARTIFICIAL & DRIED PLANTS STATE MATRIX
+    // ======================================================================
+    setNurseryArtificials: (state, action: PayloadAction<BaseNurseryProduct[]>) => {
+      state.nurseryArtificials = action.payload;
+      state.isLoading = false;
+      state.error = null;
+    },
+    addArtificialToNurseryState: (state, action: PayloadAction<BaseNurseryProduct>) => {
+      state.nurseryArtificials = [action.payload, ...state.nurseryArtificials];
+      state.isLoading = false;
+    },
+    updateArtificialInNurseryState: (state, action: PayloadAction<BaseNurseryProduct>) => {
+      state.nurseryArtificials = state.nurseryArtificials.map((item) =>
+        item._id === action.payload._id ? action.payload : item
+      );
+      state.isLoading = false;
+    },
+    deleteArtificialFromNurseryState: (state, action: PayloadAction<string>) => {
+      state.nurseryArtificials = state.nurseryArtificials.filter((item) => item._id !== action.payload);
       state.isLoading = false;
     },
 
@@ -205,6 +330,26 @@ export const {
   updateAccessoryInNurseryState,
   deleteAccessoryFromNurseryState,
   setSingleAccessoryDetails,
+  setNurseryGardeningTools,
+  addGardeningToolToNurseryState,
+  updateGardeningToolInNurseryState,
+  deleteGardeningToolFromNurseryState,
+  setNurseryPlantCare,
+  addPlantCareToNurseryState,
+  updatePlantCareInNurseryState,
+  deletePlantCareFromNurseryState,
+  setNurserySeedsBulbs,
+  addSeedsBulbsToNurseryState,
+  updateSeedsBulbsInNurseryState,
+  deleteSeedsBulbsFromNurseryState,
+  setNurseryPlantStandsShelves,
+  addPlantStandsShelvesToNurseryState,
+  updatePlantStandsShelvesInNurseryState,
+  deletePlantStandsShelvesFromNurseryState,
+  setNurseryArtificials,
+  addArtificialToNurseryState,
+  updateArtificialInNurseryState,
+  deleteArtificialFromNurseryState,
   setNurseryOrders,
   updateNurseryOrderInState,
   clearNurseryState,

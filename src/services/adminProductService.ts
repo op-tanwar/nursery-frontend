@@ -16,60 +16,60 @@ type ResourceRouteConfig = {
 
 const RESOURCE_ROUTES: Record<AdminResourceType, ResourceRouteConfig> = {
   plant: {
-    base: "/plants",
-    listPath: "all-plants",
+    base: "/products",
+    listPath: "plants",
     singularPath: "plant",
     responseKey: "plants",
     shopType: "plants",
   },
   pot: {
-    base: "/pots",
-    listPath: "all-pots",
+    base: "/products",
+    listPath: "pots",
     singularPath: "pot",
     responseKey: "pots",
     shopType: "pots",
   },
   accessory: {
-    base: "/accessories",
-    listPath: "all-accessories",
+    base: "/products",
+    listPath: "accessories",
     singularPath: "accessory",
     responseKey: "accessories",
     shopType: "accessories",
   },
   gardeningTool: {
-    base: "/gardening-tools",
-    listPath: "all-gardeningTools",
+    base: "/products",
+    listPath: "gardening-tools",
     singularPath: "gardeningTool",
     responseKey: "gardeningTools",
     shopType: "gardening-tools",
   },
   plantCare: {
-    base: "/plant-care",
-    listPath: "all-plantCare",
+    base: "/products",
+    listPath: "plant-care",
     singularPath: "plantCare",
     responseKey: "plantCare",
     shopType: "plant-care",
   },
   seedsBulbs: {
-    base: "/seeds-bulbs",
-    listPath: "all-seedsBulbs",
+    base: "/products",
+    listPath: "seeds-bulbs",
     singularPath: "seedsBulbs",
     responseKey: "seedsBulbs",
     shopType: "seeds-bulbs",
   },
   plantStandsShelves: {
-    base: "/plant-stands-shelves",
-    listPath: "all-plantStandsShelves",
+    base: "/products",
+    listPath: "stands-shelves",
     singularPath: "plantStandsShelves",
     responseKey: "plantStandsShelves",
-    shopType: "plant-stands-shelves",
+    shopType: "stands-shelves",
   },
   artificial: {
-    base: "/artificial-dried-plants",
-    listPath: "all-artificials",
+    base: "/products",
+    listPath: "artificial-dried",
     singularPath: "artificial",
     responseKey: "artificials",
-    shopType: "artificial-dried-plants",
+    shopType: "artificial-dried",
   },
 };
 
@@ -82,33 +82,42 @@ export const adminProductService = {
     type: AdminResourceType,
     queryParams?: string
   ): Promise<AdminAllProductsResponse> => {
-    const { base, listPath } = RESOURCE_ROUTES[type];
-
+    const { shopType, responseKey } = RESOURCE_ROUTES[type];
+    const categoryFilter = `category=${shopType}`;
     const url = queryParams
-      ? `${base}/admin/${listPath}?${queryParams}`
-      : `${base}/admin/${listPath}`;
+      ? `/products?${categoryFilter}&${queryParams}`
+      : `/products?${categoryFilter}`;
 
     const res: any = await api.get(url);
-    return res?.data ?? res;
+    const data = res?.data ?? res;
+    const items = data.products || [];
+
+    return {
+      success: true,
+      [responseKey]: items,
+      totalCount: data.totalCount || items.length,
+      filteredCount: data.filteredCount || items.length,
+      products: items,
+    } as any;
   },
 
   // 🌟 Toggle Active/Inactive status of any product
   toggleProductStatus: async (
-    type: AdminResourceType,
+    _type: AdminResourceType,
     id: string
   ): Promise<AdminToggleStatusResponse> => {
-    const { base, singularPath } = RESOURCE_ROUTES[type];
-    const res: any = await api.put(`${base}/admin/${singularPath}/toggle/${id}`);
+    const res: any = await api.put(`/products/${id}/toggle-status`);
     return res?.data ?? res;
   },
 
   // 🌟 Administrative force delete product asset pipeline
   deleteProductForce: async (
-    type: AdminResourceType,
+    _type: AdminResourceType,
     id: string
   ): Promise<GenericAdminMutationResponse> => {
-    const { base, singularPath } = RESOURCE_ROUTES[type];
-    const res: any = await api.delete(`${base}/admin/${singularPath}/${id}`);
+    const res: any = await api.delete(`/products/${id}`);
     return res?.data ?? res;
   },
 };
+
+export default adminProductService;

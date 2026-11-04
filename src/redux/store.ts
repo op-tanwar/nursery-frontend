@@ -15,10 +15,7 @@ import authReducer from "./slices/authSlice";
 import adminReducer from "./slices/adminSlice";
 import nurseryReducer from "./slices/nurserySlice";
 import adminProductReducer from "./slices/adminProductSlice";
-import plantReducer from "./slices/PlantsSlice";
 import userReducer from "./slices/userSlice";
-import potsReducer from "./slices/potSlice";
-import accessoryReducer from "./slices/accessorySlice";
 import nurseryProfileReducer from "./slices/nurseryProfileSlice";
 import cartReducer from "./slices/cartSlice";
 import wishlistReducer from "./slices/wishlistSlice";
@@ -28,14 +25,10 @@ import dashboardReducer from "./slices/dashboardSlice";
 import blogReducer from "./slices/blogSlice";
 import vendorReducer from "./slices/vendorSlice";
 
-// 🌿 NEW CATALOG SLICES
-import gardeningToolReducer from "./slices/gardeningToolsSlice";
-import plantCareReducer from "./slices/plantCareSlice";
-import seedsBulbsReducer from "./slices/seedsBulbsSlice";
-import plantStandsShelvesReducer from "./slices/plantStandsShelveSlice";
-import  artificialPlantsReducer from "./slices/artificialDriedPlantSlice";
+// 🌿 UNIFIED CATALOG REDUCER
+import productReducer from "./slices/productSlice";
 
-// 1. Sare reducers ko combine kiya
+// 1. Root Reducer combining unified store
 const rootReducer = combineReducers({
   auth: authReducer,
   admin: adminReducer,
@@ -43,14 +36,8 @@ const rootReducer = combineReducers({
   nursery: nurseryReducer,
   user: userReducer,
   nurseryProfile: nurseryProfileReducer,
-  plant: plantReducer,
-  pot: potsReducer,
-  accessory: accessoryReducer,
-  gardeningTool: gardeningToolReducer,
-  plantCare: plantCareReducer,
-  seedsBulbs: seedsBulbsReducer,
-  plantStandsShelves: plantStandsShelvesReducer,
-  artificialPlants: artificialPlantsReducer,
+  // 🌟 Unified polymorphic product store
+  product: productReducer,
   cart: cartReducer,
   wishlist: wishlistReducer,
   order: orderReducer,

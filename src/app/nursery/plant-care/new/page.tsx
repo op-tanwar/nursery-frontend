@@ -7,7 +7,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setNurseryLoading, setNurseryError } from "@/redux/slices/nurserySlice";
-import { plantCareService } from "@/services/plantCareService";
+import { nurseryService } from "@/services/nurseryService";
 import { ArrowLeft, Plus, Trash2, Image as ImageIcon, Loader2, ShieldCheck, CheckCircle } from "lucide-react";
 
 const PLANT_CARE_CATEGORIES = [
@@ -130,7 +130,7 @@ export default function CreatePlantCarePage() {
       formData.append("coverImage", coverImage);
       galleryImages.forEach((file) => formData.append("images", file));
 
-      await plantCareService.createPlantCare(formData);
+      await nurseryService.createPlantCare(formData);
       toast.success("Plant Care asset deployed!", { id: loadingToast });
       router.push("/nursery/plant-care");
     } catch (err: any) {
