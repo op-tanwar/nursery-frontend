@@ -307,8 +307,14 @@ export default function CheckoutPage() {
             router.push("/orders/me");
           } catch (verifyErr: any) {
             console.error("Order verification exception:", verifyErr);
-            const errorMessage = verifyErr?.message || verifyErr?.response?.data?.message || "Order verification failed.";
-            toast.error(errorMessage, { id: verifyToastId });
+            let errorMessage = verifyErr?.message || verifyErr?.response?.data?.message || "Order verification failed.";
+            if (verifyErr?.unserviceableItems && Array.isArray(verifyErr.unserviceableItems) && verifyErr.unserviceableItems.length > 0) {
+              const itemNames = verifyErr.unserviceableItems
+                .map((u: any) => `${u.productName} (${u.nurseryName || "Nursery"})`)
+                .join(", ");
+              errorMessage = `Delivery not available at PIN ${formData.zipCode.trim()} for: ${itemNames}`;
+            }
+            toast.error(errorMessage, { id: verifyToastId, duration: 6000 });
             dispatch(setPaymentFailure(errorMessage));
           }
         }
@@ -324,9 +330,15 @@ export default function CheckoutPage() {
 
     } catch (err: any) {
       console.error("Checkout execution error:", err);
-      const catchMsg = err?.message || "Payment initialization failed.";
+      let catchMsg = err?.message || (typeof err === "string" ? err : "") || "Payment initialization failed.";
+      if (err?.unserviceableItems && Array.isArray(err.unserviceableItems) && err.unserviceableItems.length > 0) {
+        const itemNames = err.unserviceableItems
+          .map((u: any) => `${u.productName} (${u.nurseryName || "Nursery"})`)
+          .join(", ");
+        catchMsg = `Delivery not available at PIN ${formData.zipCode.trim()} for: ${itemNames}`;
+      }
       toast.dismiss(toastId);
-      toast.error(catchMsg);
+      toast.error(catchMsg, { duration: 6000 });
       dispatch(setPaymentFailure(catchMsg));
     }
   };
