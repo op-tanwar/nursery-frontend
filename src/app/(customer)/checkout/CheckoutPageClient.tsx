@@ -19,6 +19,7 @@ import {
 } from "@/redux/slices/paymentSlice";
 import { calculateCartTotals, getEffectivePrice, CategoryTaxConfig } from "@/utils/pricing";
 import { taxService } from "@/services/taxService";
+import { couponService } from "@/services/couponService";
 
 interface RazorpayOptions {
   key: string;
@@ -70,6 +71,17 @@ export default function CheckoutPage() {
   });
 
   const [taxMap, setTaxMap] = useState<Record<string, CategoryTaxConfig> | undefined>(undefined);
+
+  // 🎟️ Coupon State Management
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discountAmount: number;
+    discountType?: "flat" | "percentage";
+    discountValue?: number;
+  } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -127,6 +139,66 @@ export default function CheckoutPage() {
     return calculateCartTotals(cartItems as any, taxMap);
   }, [cartItems, taxMap]);
 
+  // Effective grand total after applying valid coupon discount
+  const effectiveGrandTotal = useMemo(() => {
+    const rawGrandTotal = totals.grandTotal;
+    const discount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+    return Math.max(0, Math.round(rawGrandTotal - discount));
+  }, [totals.grandTotal, appliedCoupon]);
+
+  // Reset applied coupon if cart is emptied
+  useEffect(() => {
+    if (cartItems.length === 0 && appliedCoupon) {
+      setAppliedCoupon(null);
+      setCouponError(null);
+    }
+  }, [cartItems.length, appliedCoupon]);
+
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) return;
+
+    setCouponLoading(true);
+    setCouponError(null);
+    const code = couponInput.trim().toUpperCase();
+    const toastId = toast.loading(`Validating coupon "${code}"...`);
+
+    try {
+      const res = await couponService.validateCoupon(code, totals.subtotal);
+
+      if (res?.success) {
+        setAppliedCoupon({
+          code: res.code || code,
+          discountAmount: res.discountAmount || 0,
+          discountType: res.discountType,
+          discountValue: res.discountValue,
+        });
+        toast.success(res.message || `Coupon "${res.code || code}" applied successfully!`, {
+          id: toastId,
+        });
+        setCouponInput("");
+      } else {
+        throw new Error(res?.message || "Invalid coupon code.");
+      }
+    } catch (err: any) {
+      console.error("Coupon validation error:", err);
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        (typeof err === "string" ? err : "Failed to apply coupon.");
+      setCouponError(msg);
+      toast.error(msg, { id: toastId });
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    const code = appliedCoupon?.code;
+    setAppliedCoupon(null);
+    setCouponError(null);
+    toast.success(`Coupon "${code || ""}" removed.`);
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -172,6 +244,7 @@ export default function CheckoutPage() {
       const gatewayPayload = {
         orderItems: serverOrderItems,
         shippingInfo: explicitShippingFormat,
+        couponCode: appliedCoupon?.code,
       };
 
       const responseData: any = await paymentService.initializeRazorpayOrder(gatewayPayload as any);
@@ -208,6 +281,7 @@ export default function CheckoutPage() {
               razorpay_signature: response.razorpay_signature,
               shippingInfo: explicitShippingFormat,
               orderItems: serverOrderItems,
+              couponCode: appliedCoupon?.code,
               paymentInfo: {
                 id: response.razorpay_payment_id,
                 status: "captured",
@@ -477,6 +551,70 @@ export default function CheckoutPage() {
                   })}
                 </div>
 
+                {/* 🎟️ Coupon & Promo Code Section */}
+                <div className="border-t border-line pt-4 mb-4">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Tag className="w-4 h-4 text-brand-primary" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-600">Promo & Coupon Code</span>
+                  </div>
+
+                  {appliedCoupon ? (
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base select-none">🎉</span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
+                              {appliedCoupon.code}
+                            </span>
+                            <span className="text-[11px] text-emerald-700 font-semibold">Applied</span>
+                          </div>
+                          <p className="text-[11px] text-emerald-600 mt-0.5 m-0 font-medium">
+                            Saving ₹{appliedCoupon.discountAmount.toLocaleString("en-IN")} on this order
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        disabled={isProcessing}
+                        className="text-xs text-rose-600 hover:text-rose-700 font-semibold underline bg-transparent border-none cursor-pointer p-1"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            value={couponInput}
+                            onChange={(e) => {
+                              setCouponInput(e.target.value.toUpperCase());
+                              if (couponError) setCouponError(null);
+                            }}
+                            placeholder="ENTER COUPON CODE"
+                            disabled={couponLoading || isProcessing}
+                            className="w-full uppercase tracking-wider px-3.5 py-2.5 bg-background border border-line rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:border-brand-primary transition-colors disabled:opacity-50"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleApplyCoupon}
+                          disabled={couponLoading || !couponInput.trim() || isProcessing}
+                          className="px-4 py-2.5 bg-brand-primary text-white text-xs font-bold rounded-xl hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none flex items-center justify-center min-w-[70px]"
+                        >
+                          {couponLoading ? "Applying..." : "Apply"}
+                        </button>
+                      </div>
+                      {couponError && (
+                        <p className="text-[11px] text-rose-600 font-medium m-0 pl-1">{couponError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-3 text-sm border-t border-line pt-4 mb-4">
                   <div className="flex justify-between text-muted-text">
                     <span>Original Price (MRP)</span>
@@ -489,6 +627,15 @@ export default function CheckoutPage() {
                         <Tag className="w-3.5 h-3.5" /> Total Savings
                       </span>
                       <span>-₹{totals.discountAmount.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+
+                  {appliedCoupon && appliedCoupon.discountAmount > 0 && (
+                    <div className="flex justify-between text-emerald-600 font-semibold">
+                      <span className="flex items-center gap-1">
+                        <Tag className="w-3.5 h-3.5" /> Coupon Discount ({appliedCoupon.code})
+                      </span>
+                      <span>-₹{appliedCoupon.discountAmount.toLocaleString("en-IN")}</span>
                     </div>
                   )}
 
@@ -542,7 +689,7 @@ export default function CheckoutPage() {
                     <span className="text-base font-bold text-foreground block">Final Payable</span>
                     <span className="text-[11px] text-muted-text">All taxes & fees included</span>
                   </div>
-                  <span className="text-2xl font-black text-brand-primary">₹{totals.grandTotal.toLocaleString("en-IN")}</span>
+                  <span className="text-2xl font-black text-brand-primary">₹{effectiveGrandTotal.toLocaleString("en-IN")}</span>
                 </div>
 
                 <button
@@ -550,7 +697,7 @@ export default function CheckoutPage() {
                   disabled={isProcessing}
                   className="w-full bg-brand-primary text-white font-semibold py-3.5 rounded-xl border-none cursor-pointer text-sm tracking-wide transition-colors duration-200 hover:bg-brand-dark active:scale-[0.99] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {isProcessing ? "Processing Payment..." : `Pay ₹${totals.grandTotal.toLocaleString("en-IN")} & Place Order`}
+                  {isProcessing ? "Processing Payment..." : `Pay ₹${effectiveGrandTotal.toLocaleString("en-IN")} & Place Order`}
                 </button>
 
                 <div className="flex items-center justify-center gap-2 text-xs text-muted-text pt-2">

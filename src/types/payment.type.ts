@@ -11,6 +11,7 @@ export interface IRazorpayOrderInitPayload {
     image?: string;
   }[];
   shippingInfo?: IShippingAddress | Record<string, any>;
+  couponCode?: string;
   // Legacy / informative fields (backend ignores and recalculates authoritatively)
   amount?: number;
   currency?: "INR" | string;
@@ -41,6 +42,8 @@ export interface RazorpayOrderResponse {
   calculation?: {
     originalItemsPrice: number;
     discountAmount: number;
+    couponCode?: string;
+    couponDiscountAmount?: number;
     itemsPrice: number;
     shippingPrice: number;
     taxPrice: number;
@@ -53,6 +56,7 @@ export interface IRazorpaySignatureVerifyPayload {
   razorpay_order_id: string;
   razorpay_signature: string;
   shippingInfo?: IShippingAddress | Record<string, any>;
+  couponCode?: string;
   orderItems: {
     productId?: string;
     item?: string;

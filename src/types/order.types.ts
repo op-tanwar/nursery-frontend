@@ -100,6 +100,8 @@ export interface IOrder {
   itemsPrice?: number;
   taxPrice?: number;
   shippingPrice?: number;
+  couponCode?: string;
+  discountAmount?: number;
   totalPrice?: number;
 
   orderStatus: OrderStatus;
