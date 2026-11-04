@@ -16,6 +16,24 @@ export interface IReturnReplacementRequest {
   status: RequestStatus;
   adminNotes?: string;
   resolvedAt?: string;
+  isProcessed?: boolean;
+  refundDetails?: {
+    refundId?: string;
+    refundStatus?: "PENDING" | "PROCESSED" | "FAILED" | "PENDING_MANUAL_REVIEW";
+    refundAmount?: number;
+    refundedAt?: string;
+    failureReason?: string;
+  };
+  replacementOrderId?: any;
+  inventoryAction?: string;
+  timeline?: Array<{
+    status: string;
+    action: string;
+    actor?: any;
+    actorRole?: string;
+    notes?: string;
+    timestamp: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
