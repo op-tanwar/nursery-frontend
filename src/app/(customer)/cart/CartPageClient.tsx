@@ -40,6 +40,8 @@ interface CartItem {
   quantity: number;
   itemModel?: string;
   category?: string;
+  isAvailable?: boolean;
+  unavailableReason?: "NURSERY_INACTIVE" | "OUT_OF_STOCK" | "PRODUCT_DISABLED";
 }
 
 export default function CartPage() {
@@ -102,9 +104,10 @@ export default function CartPage() {
     return ((cart?.items || []) as CartItem[]).filter((i) => Boolean(i.product));
   }, [cart?.items]);
 
-  // Authoritative paise-safe client calculation mirroring backend rules
+  // Authoritative paise-safe client calculation: EXCLUDES items where isAvailable === false
   const totals = useMemo(() => {
-    return calculateCartTotals(items, taxMap);
+    const availableItems = items.filter((i) => i.isAvailable !== false);
+    return calculateCartTotals(availableItems, taxMap);
   }, [items, taxMap]);
 
   const handleQuantityChange = async (productId: string, currentQty: number, targetQty: number, maxStock: number) => {
@@ -184,6 +187,14 @@ export default function CartPage() {
 
   const handleProceedToCheckout = () => {
     if (items.length === 0) return;
+
+    const unavailableItems = items.filter((i) => i.isAvailable === false);
+    if (unavailableItems.length > 0) {
+      toast.error(
+        "Your cart contains unavailable item(s). Please remove them before proceeding to checkout."
+      );
+      return;
+    }
 
     if (!isAuthenticated) {
       toast("Please log in to proceed to checkout", { icon: "🔐" });
@@ -305,6 +316,17 @@ export default function CartPage() {
                             </>
                           )}
                         </div>
+
+                        {item.isAvailable === false && (
+                          <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                            {item.unavailableReason === "NURSERY_INACTIVE"
+                              ? "Vendor Temporarily Inactive"
+                              : item.unavailableReason === "OUT_OF_STOCK"
+                              ? "Out of Stock"
+                              : "Product Unavailable"}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -447,9 +469,18 @@ export default function CartPage() {
                 </span>
               </div>
 
+              {items.some((i) => i.isAvailable === false) && (
+                <div className="text-[12px] text-amber-800 bg-amber-50 p-3 rounded-xl font-medium border border-amber-200 flex items-start gap-2">
+                  <span className="text-base leading-none">⚠️</span>
+                  <span>
+                    Some items in your cart are currently unavailable. Please remove them before proceeding to checkout.
+                  </span>
+                </div>
+              )}
+
               <button
                 type="button"
-                disabled={processingId !== null || items.length === 0}
+                disabled={processingId !== null || items.length === 0 || items.some((i) => i.isAvailable === false)}
                 onClick={handleProceedToCheckout}
                 className="w-full bg-brand-primary text-white font-semibold py-3.5 rounded-xl border-none cursor-pointer text-sm tracking-wide transition-colors duration-200 hover:bg-brand-dark active:scale-[0.99] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >

@@ -348,6 +348,14 @@ export default function CheckoutPage() {
       return;
     }
 
+    const unavailableInCart = cartItems.filter((i: any) => i.isAvailable === false);
+    if (unavailableInCart.length > 0) {
+      toast.error(
+        "Your cart contains unavailable item(s). Please remove them before proceeding with checkout."
+      );
+      return;
+    }
+
     if (!(window as any).Razorpay) {
       toast.error("Razorpay SDK is not ready yet. Please refresh the page and try again.");
       return;

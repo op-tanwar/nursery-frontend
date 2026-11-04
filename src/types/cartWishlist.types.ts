@@ -49,12 +49,18 @@ export interface ICartItem {
   quantity: number;
   nursery: string;
   _id?: string;
+  isAvailable?: boolean;
+  unavailableReason?: "NURSERY_INACTIVE" | "OUT_OF_STOCK" | "PRODUCT_DISABLED";
 }
 
 export interface ICart {
   _id: string;
   user: string;
   items: ICartItem[];
+  subtotal?: number;
+  totalAmount?: number;
+  availableItemsCount?: number;
+  unavailableItemsCount?: number;
   createdAt: string;
   updatedAt: string;
 }
