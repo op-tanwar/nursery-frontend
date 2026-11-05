@@ -95,10 +95,13 @@ export default function EditArtificialDriedPlantPage() {
         const response = await nurseryService.getArtificialDetails(`${plantId}?t=${Date.now()}`);
         const plant = response?.artificialDriedPlant || response?.artificial || response?.data || response;
 
+        const attrs = plant.attributes || plant.specifications || {};
+        const specs = plant.specifications || attrs.specifications || attrs;
+
         setName(plant.name || "");
         setDescription(plant.description || "");
         setShortDesc(plant.descriptionOption?.short || "");
-        setCategory(plant.category || "");
+        setCategory(attrs.subCategory || plant.category || "");
         setPrice(plant.price ?? "");
         setDiscountPrice(plant.discountPrice ?? "");
         setStock(plant.stock ?? "");
@@ -110,14 +113,26 @@ export default function EditArtificialDriedPlantPage() {
         }
 
         // Specifications mapping
-        if (plant.specifications) {
-          setBrand(plant.specifications.brand || "Generic");
-          setMaterial(plant.specifications.material || "");
-          setHeight(plant.specifications.height || "");
-          setColor(plant.specifications.color || "");
-          setWashable(!!plant.specifications.washable);
-          setPotIncluded(!!plant.specifications.potIncluded);
-        }
+        setBrand(specs.brand || attrs.brand || plant.brand || "Generic");
+        setMaterial(specs.material || attrs.material || plant.material || "");
+        setHeight(specs.height || attrs.height || plant.height || "");
+        setColor(specs.color || attrs.color || plant.color || "");
+        setWashable(
+          specs.washable === true ||
+          specs.washable === "true" ||
+          attrs.washable === true ||
+          attrs.washable === "true" ||
+          attrs.isWashable === true ||
+          attrs.isWashable === "true"
+        );
+        setPotIncluded(
+          specs.potIncluded === true ||
+          specs.potIncluded === "true" ||
+          attrs.potIncluded === true ||
+          attrs.potIncluded === "true" ||
+          attrs.includesPot === true ||
+          attrs.includesPot === "true"
+        );
 
         setExistingCoverUrl(plant.coverImage?.url || "");
         setExistingGalleryImages(Array.isArray(plant.images) ? plant.images : []);

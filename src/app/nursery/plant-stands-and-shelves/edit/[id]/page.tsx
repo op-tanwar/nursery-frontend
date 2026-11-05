@@ -72,31 +72,34 @@ export default function EditStandsShelvesPage() {
         const response = await nurseryService.getPlantStandsShelvesDetails(`${standId}?t=${Date.now()}`);
         const item = response.plantStandsShelves || response?.data || response;
 
+        const attrs = item.attributes || {};
         setName(item.name || "");
         setDescription(item.description || "");
         setShortDesc(item.descriptionOption?.short || "");
-        setCategory(item.category || "");
+        setCategory(attrs.subCategory || item.category || "");
         setPrice(item.price || "");
         setDiscountPrice(item.discountPrice || "");
         setStock(item.stock || "");
-        setMaterial(item.material || "");
-        setMaxLoadCapacity(item.maxLoadCapacity || "");
-        setTierCount(item.tierCount ?? 1);
+        setMaterial(attrs.material || item.material || "");
+        setMaxLoadCapacity(attrs.maxLoadCapacity || item.maxLoadCapacity || "");
+        setTierCount(attrs.tierCount ?? item.tierCount ?? 1);
         setMetaTitle(item.metaTitle || "");
         setMetaDescription(item.metaDescription || "");
         setExistingCoverUrl(item.coverImage?.url || "");
         setExistingGalleryImages(Array.isArray(item.images) ? item.images : []);
 
-        if (item.dimensions && typeof item.dimensions === "object") {
-          setDimHeight(item.dimensions.height || "");
-          setDimWidth(item.dimensions.width || "");
-          setDimLength(item.dimensions.length || "");
-        } else if (typeof item.dimensions === "string") {
-          setDimHeight(item.dimensions);
+        const dims = attrs.dimensions || item.dimensions;
+        if (dims && typeof dims === "object") {
+          setDimHeight(dims.height || "");
+          setDimWidth(dims.width || "");
+          setDimLength(dims.length || "");
+        } else if (typeof dims === "string") {
+          setDimHeight(dims);
         }
 
         if (item.descriptionOption?.points?.length) setPoints(item.descriptionOption.points);
-        if (item.features?.length) setFeatures(item.features);
+        if (attrs.features?.length) setFeatures(attrs.features);
+        else if (item.features?.length) setFeatures(item.features);
 
         dispatch(setNurseryLoading(false));
       } catch (err: any) {

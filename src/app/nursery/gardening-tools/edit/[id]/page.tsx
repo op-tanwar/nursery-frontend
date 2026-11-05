@@ -66,14 +66,15 @@ export default function EditToolPage() {
         const response = await nurseryService.getGardeningToolDetails(`${toolId}?t=${Date.now()}`);
         const tool = response.gardeningTool || response?.data || response;
 
+        const attrs = tool.attributes || {};
         setName(tool.name || "");
         setDescription(tool.description || "");
-        setCategory(tool.category || "");
+        setCategory(attrs.subCategory || tool.category || "");
         setPrice(tool.price || "");
         setDiscountPrice(tool.discountPrice || "");
         setStock(tool.stock || "");
-        setMaterial(tool.material || "");
-        setHandleMaterial(tool.handleMaterial || "");
+        setMaterial(attrs.material || tool.material || "");
+        setHandleMaterial(attrs.handleMaterial || tool.handleMaterial || "");
         setShortDesc(tool.descriptionOption?.short || "");
         setMetaTitle(tool.metaTitle || "");
         setMetaDescription(tool.metaDescription || "");
@@ -81,7 +82,8 @@ export default function EditToolPage() {
         setExistingGalleryImages(Array.isArray(tool.images) ? tool.images : []);
 
         if (tool.descriptionOption?.points?.length) setPoints(tool.descriptionOption.points);
-        if (tool.features?.length) setFeatures(tool.features);
+        if (attrs.features?.length) setFeatures(attrs.features);
+        else if (tool.features?.length) setFeatures(tool.features);
 
         dispatch(setNurseryLoading(false));
       } catch (err: any) {

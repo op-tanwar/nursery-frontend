@@ -94,17 +94,23 @@ export default function EditPlantPage() {
           throw new Error("Targeted botanical inventory document node not found.");
         }
 
+        const attrs = targetedPlant.attributes || {};
         setName(targetedPlant.name || "");
         setDescription(targetedPlant.description || "");
-        setCategory(targetedPlant.category || "");
+        setCategory(attrs.subCategory || targetedPlant.category || "");
         setPrice(targetedPlant.price ?? "");
         setDiscountPrice(targetedPlant.discountPrice ?? "");
         setStock(targetedPlant.stock ?? "");
         setShortDesc(targetedPlant.descriptionOption?.short || "");
-        setLightRequirement(targetedPlant.lightRequirement || "");
-        setWateringSchedule(targetedPlant.wateringSchedule || "");
-        setMaintenanceLevel(targetedPlant.maintenanceLevel || "");
-        setIsPetFriendly(targetedPlant.isPetFriendly === true || targetedPlant.isPetFriendly === "true");
+        setLightRequirement(attrs.lightRequirement || targetedPlant.lightRequirement || "");
+        setWateringSchedule(attrs.wateringSchedule || targetedPlant.wateringSchedule || "");
+        setMaintenanceLevel(attrs.maintenanceLevel || targetedPlant.maintenanceLevel || "");
+        setIsPetFriendly(
+          attrs.isPetFriendly === true ||
+          attrs.isPetFriendly === "true" ||
+          targetedPlant.isPetFriendly === true ||
+          targetedPlant.isPetFriendly === "true"
+        );
         setMetaTitle(targetedPlant.metaTitle || "");
         setMetaDescription(targetedPlant.metaDescription || "");
         setExistingCoverUrl(targetedPlant.coverImage?.url || "");
@@ -113,8 +119,10 @@ export default function EditPlantPage() {
         );
 
         if (targetedPlant.descriptionOption?.points?.length) setPoints(targetedPlant.descriptionOption.points);
-        if (targetedPlant.benefits?.length) setBenefits(targetedPlant.benefits);
-        if (targetedPlant.careInstructions?.length) setCareInstructions(targetedPlant.careInstructions);
+        if (attrs.benefits?.length) setBenefits(attrs.benefits);
+        else if (targetedPlant.benefits?.length) setBenefits(targetedPlant.benefits);
+        if (attrs.careInstructions?.length) setCareInstructions(attrs.careInstructions);
+        else if (targetedPlant.careInstructions?.length) setCareInstructions(targetedPlant.careInstructions);
 
         dispatch(setNurseryLoading(false));
       } catch (err: any) {

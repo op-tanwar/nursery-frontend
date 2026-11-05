@@ -66,6 +66,7 @@ export default function EditSeedsBulbsPage() {
         const response = await nurseryService.getSeedsBulbsDetails(`${seedId}?t=${Date.now()}`);
         const seed = response.seedsBulbs || response?.data || response;
 
+        const attrs = seed.attributes || {};
         setName(seed.name || "");
 
         let rawDesc = seed.description || "";
@@ -83,11 +84,11 @@ export default function EditSeedsBulbsPage() {
 
         setDescription(rawDesc);
         setShortDesc(seed.descriptionOption?.short || "");
-        setCategory(seed.category || "");
+        setCategory(attrs.subCategory || seed.category || "");
         setPrice(seed.price || "");
         setDiscountPrice(seed.discountPrice || "");
         setStock(seed.stock || "");
-        setSeedQuantity(seed.quantityPerPack || seed.seedQuantity || "");
+        setSeedQuantity(attrs.quantityPerPack || attrs.seedQuantity || seed.quantityPerPack || seed.seedQuantity || "");
         setMetaTitle(seed.metaTitle || "");
         setMetaDescription(seed.metaDescription || "");
         setExistingCoverUrl(seed.coverImage?.url || "");
@@ -97,14 +98,14 @@ export default function EditSeedsBulbsPage() {
           setPoints(seed.descriptionOption.points);
         }
 
-        const season = seed.sowingSeason;
+        const season = attrs.sowingSeason || seed.sowingSeason;
         if (Array.isArray(season)) {
           setSowingSeason(season[0] || "");
         } else {
           setSowingSeason(season || "");
         }
 
-        const germ = seed.germinationTime || seed.germinationDays || "";
+        const germ = attrs.germinationDays || attrs.germinationTime || seed.germinationTime || seed.germinationDays || "";
         if (typeof germ === "number") {
           setGerminationDays(germ);
         } else if (typeof germ === "string") {
@@ -112,8 +113,9 @@ export default function EditSeedsBulbsPage() {
           setGerminationDays(Number.isFinite(parsed) ? parsed : "");
         }
 
-        if (seed.sowingSteps?.length) {
-          setSowingSteps(seed.sowingSteps);
+        const sowingStepsList = attrs.sowingSteps || seed.sowingSteps;
+        if (sowingStepsList?.length) {
+          setSowingSteps(sowingStepsList);
         } else if (parsedSteps.length) {
           setSowingSteps(parsedSteps);
         }

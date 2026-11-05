@@ -96,20 +96,34 @@ export default function EditPotConfigurationPage() {
           throw new Error("Targeted planter inventory document node not found.");
         }
 
+        const attrs = targetedPot.attributes || {};
+        const dims = attrs.dimensions || targetedPot.dimensions || {};
         setName(targetedPot.name || "");
         setDescription(targetedPot.description || "");
-        setCategory(targetedPot.category || "");
+        setCategory(attrs.subCategory || targetedPot.category || "");
         setPrice(targetedPot.price ?? "");
         setDiscountPrice(targetedPot.discountPrice ?? "");
         setStock(targetedPot.stock ?? "");
-        setMaterial(targetedPot.material || "");
-        setColor(Array.isArray(targetedPot.color) ? targetedPot.color[0] || "" : targetedPot.color || "");
-        setHeight(targetedPot.dimensions?.height || "");
-        setDiameter(targetedPot.dimensions?.diameter || "");
-        setShape(targetedPot.shape || "");
-        setHasDrainageHole(targetedPot.hasDrainageHole === true || targetedPot.hasDrainageHole === "true");
-        setIsIndoorOutdoor(targetedPot.isIndoorOutdoor || "Both");
-        setIncludesSaucer(targetedPot.includesSaucer === true || targetedPot.includesSaucer === "true");
+        setMaterial(attrs.material || targetedPot.material || "");
+        const rawColor = attrs.color || targetedPot.color;
+        setColor(Array.isArray(rawColor) ? rawColor[0] || "" : rawColor || "");
+        setHeight(attrs.height || dims.height || "");
+        setDiameter(attrs.diameter || dims.diameter || "");
+        setShape(attrs.shape || targetedPot.shape || "");
+        setHasDrainageHole(
+          attrs.hasDrainageHole === true ||
+          attrs.hasDrainageHole === "true" ||
+          attrs.drainageHoles === true ||
+          targetedPot.hasDrainageHole === true ||
+          targetedPot.hasDrainageHole === "true"
+        );
+        setIsIndoorOutdoor(attrs.isIndoorOutdoor || attrs.placement || targetedPot.isIndoorOutdoor || "Both");
+        setIncludesSaucer(
+          attrs.includesSaucer === true ||
+          attrs.includesSaucer === "true" ||
+          targetedPot.includesSaucer === true ||
+          targetedPot.includesSaucer === "true"
+        );
         setMetaTitle(targetedPot.metaTitle || "");
         setMetaDescription(targetedPot.metaDescription || "");
         setShortDesc(targetedPot.descriptionOption?.short || "");
@@ -117,7 +131,8 @@ export default function EditPotConfigurationPage() {
         setExistingGalleryImages(Array.isArray(targetedPot.images) ? targetedPot.images : []);
 
         if (targetedPot.descriptionOption?.points?.length) setPoints(targetedPot.descriptionOption.points);
-        if (targetedPot.benefits?.length) setBenefits(targetedPot.benefits);
+        if (attrs.benefits?.length) setBenefits(attrs.benefits);
+        else if (targetedPot.benefits?.length) setBenefits(targetedPot.benefits);
 
         dispatch(setNurseryLoading(false));
       } catch (err: any) {

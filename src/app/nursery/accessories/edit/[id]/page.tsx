@@ -91,17 +91,19 @@ export default function EditAccessoryConfigurationPage() {
           throw new Error("Targeted gear/accessory inventory document node not found.");
         }
 
+        const attrs = targetedAcc.attributes || targetedAcc.specifications || {};
+        const specs = targetedAcc.specifications || attrs.specifications || attrs;
         setName(targetedAcc.name || "");
         setDescription(targetedAcc.description || "");
-        setCategory(targetedAcc.category || "");
+        setCategory(attrs.subCategory || targetedAcc.category || "");
         setPrice(targetedAcc.price ?? "");
         setDiscountPrice(targetedAcc.discountPrice ?? "");
         setStock(targetedAcc.stock ?? "");
-        setBrand(targetedAcc.specifications?.brand || "Generic");
-        setWeight(targetedAcc.specifications?.weight || "");
-        setMaterial(targetedAcc.specifications?.material || "");
-        setCapacity(targetedAcc.specifications?.capacity || "");
-        setDimensions(targetedAcc.specifications?.dimensions || "");
+        setBrand(specs.brand || attrs.brand || targetedAcc.brand || "Generic");
+        setWeight(specs.weight || attrs.weight || targetedAcc.weight || "");
+        setMaterial(specs.material || attrs.material || targetedAcc.material || "");
+        setCapacity(specs.capacity || attrs.capacity || targetedAcc.capacity || "");
+        setDimensions(specs.dimensions || attrs.dimensions || targetedAcc.dimensions || "");
         setMetaTitle(targetedAcc.metaTitle || "");
         setMetaDescription(targetedAcc.metaDescription || "");
         setShortDesc(targetedAcc.descriptionOption?.short || "");
@@ -109,7 +111,8 @@ export default function EditAccessoryConfigurationPage() {
         setExistingGalleryImages(Array.isArray(targetedAcc.images) ? targetedAcc.images : []);
 
         if (targetedAcc.descriptionOption?.points?.length) setPoints(targetedAcc.descriptionOption.points);
-        if (targetedAcc.benefits?.length) setBenefits(targetedAcc.benefits);
+        if (attrs.benefits?.length) setBenefits(attrs.benefits);
+        else if (targetedAcc.benefits?.length) setBenefits(targetedAcc.benefits);
 
         dispatch(setNurseryLoading(false));
       } catch (err: any) {

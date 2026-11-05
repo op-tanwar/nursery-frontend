@@ -68,15 +68,16 @@ export default function EditPlantCarePage() {
         const response = await nurseryService.getPlantCareDetails(`${careId}?t=${Date.now()}`);
         const item = response.plantCare || response?.data || response;
 
+        const attrs = item.attributes || {};
         setName(item.name || "");
         setDescription(item.description || "");
         setShortDesc(item.descriptionOption?.short || "");
-        setCategory(item.category || "");
+        setCategory(attrs.subCategory || item.category || "");
         setPrice(item.price || "");
         setDiscountPrice(item.discountPrice || "");
         setStock(item.stock || "");
-        setVolume(item.volumeOrWeight || item.volume || "");
-        setComposition(item.composition || "");
+        setVolume(attrs.volumeOrWeight || attrs.volume || item.volumeOrWeight || item.volume || "");
+        setComposition(attrs.composition || item.composition || "");
         setMetaTitle(item.metaTitle || "");
         setMetaDescription(item.metaDescription || "");
         setExistingCoverUrl(item.coverImage?.url || "");
@@ -86,7 +87,7 @@ export default function EditPlantCarePage() {
           setPoints(item.descriptionOption.points);
         }
 
-        const howToUse = item.howToUse || item.usageInstructions;
+        const howToUse = attrs.howToUse || attrs.usageInstructions || item.howToUse || item.usageInstructions;
         if (Array.isArray(howToUse) && howToUse.length) {
           setUsageInstructions(howToUse);
         } else if (typeof howToUse === "string" && howToUse.trim()) {
