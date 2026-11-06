@@ -10,6 +10,7 @@ import { logout, hydrateAuth } from "@/redux/slices/authSlice";
 import { setCartData, setCartError, setCartLoading, loadGuestCart } from "@/redux/slices/cartSlice";
 import { setWishlistData, setWishlistError, setWishlistLoading } from "@/redux/slices/wishlistSlice";
 import { wishlistService, cartService } from "@/services/cartWishlistService";
+import { authService } from "@/services/authService";
 import toast from "react-hot-toast";
 
 import PincodeModal from "@/components/customer/common/PincodeModal";
@@ -115,11 +116,14 @@ export default function Navbar() {
     };
   }, [menuOpen]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setUserMenuOpen(false);
     setMenuOpen(false);
-    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-    document.cookie = "role=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    try {
+      await authService.logoutUser();
+    } catch {
+      // Continue client cleanup even on network failure
+    }
     dispatch(logout());
     toast.success("Logged out successfully.");
     window.location.href = "/login";

@@ -12,14 +12,15 @@ export const api = axios.create({
 });
 
 /**
- * Safely flushes all persisted authentication state (localStorage & session cookies)
- * from the browser environment.
+ * Safely flushes all legacy persisted authentication state from client storage.
  */
 export function purgeClientAuthData(): void {
   if (typeof window === "undefined") return;
 
   try {
     const keys = [
+      "token",
+      "authToken",
       "urban_nursery_token",
       "urban_nursery_role",
       "urban_nursery_user",
@@ -29,35 +30,19 @@ export function purgeClientAuthData(): void {
     ];
     for (const key of keys) {
       localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
     }
   } catch (err) {
-    console.warn("Failed to clear localStorage keys:", err);
-  }
-
-  try {
-    // Clear cookies with and without Secure flag to handle both HTTP localhost and HTTPS environments
-    const base = "=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0; SameSite=Lax;";
-    document.cookie = `token${base}`;
-    document.cookie = `role${base}`;
-    document.cookie = `token${base} Secure;`;
-    document.cookie = `role${base} Secure;`;
-  } catch (err) {
-    console.warn("Failed to clear auth cookies:", err);
+    console.warn("Failed to clear client storage keys:", err);
   }
 }
 
 /* ─────────────────────────────────────────────────────────
-    🚀 REQUEST INTERCEPTOR (Automatic Token Injection & Upload Config)
+    🚀 REQUEST INTERCEPTOR (Pure HTTP-Only Cookies & Upload Config)
 ───────────────────────────────────────────────────────── */
 api.interceptors.request.use(
   (config) => {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("urban_nursery_token") || localStorage.getItem("planto_token");
-      // Prevent injecting empty/null/whitespace strings
-      if (token && token.trim() !== "" && config.headers) {
-        config.headers.Authorization = `Bearer ${token.trim()}`;
-      }
-    }
+    // Zero JS-readable JWT token injection: authentication relies exclusively on secure httpOnly cookies
     if (config.data instanceof FormData) {
       if (config.headers) {
         delete config.headers["Content-Type"];

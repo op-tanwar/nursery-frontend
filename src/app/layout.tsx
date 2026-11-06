@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import StoreProvider from "@/components/redux/StoreProvider";
+import AuthInitializer from "@/components/auth/AuthInitializer";
 import AppToaster from "@/components/common/AppToaster";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
@@ -93,7 +94,10 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground selection:bg-brand-primary/20">
         <OrganizationJsonLd />
         <WebSiteJsonLd />
-        <StoreProvider>{children}</StoreProvider>
+        <StoreProvider>
+          <AuthInitializer />
+          {children}
+        </StoreProvider>
         <AppToaster />
       </body>
     </html>

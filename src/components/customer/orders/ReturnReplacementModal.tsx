@@ -14,7 +14,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { returnReplacementService } from "@/services/returnReplacementService";
+import { claimService } from "@/services/claimService";
 import { RequestType } from "@/types/returnReplacement.types";
 
 export interface ReturnReplacementModalProps {
@@ -185,7 +185,7 @@ export default function ReturnReplacementModal({
         };
       }
 
-      const res = await returnReplacementService.createRequest(payloadData);
+      const res = await claimService.createClaim(payloadData);
 
       toast.success(
         res?.message ||

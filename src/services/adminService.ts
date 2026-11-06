@@ -1,4 +1,5 @@
 import { api } from "@/config/api";
+import { IAdminDashboardResponse, TimeframeFilter } from "@/types/dashboard.types";
 
 export interface UserUpdatePayload {
   role: "user" | "nursery" | "admin";
@@ -13,7 +14,11 @@ export interface ToggleNurseryStatusPayload {
   isActive: boolean;
 }
 
-interface GlobalStatsResponse { success: boolean; stats: any; }
+export interface GlobalStatsResponse extends Partial<IAdminDashboardResponse> {
+  success: boolean;
+  stats?: any;
+}
+
 interface AllOrdersResponse { success: boolean; orders: any[]; }
 interface AllUsersResponse { success: boolean; users: any[]; }
 interface AllNurseriesResponse { success: boolean; count?: number; users: any[]; }
@@ -28,9 +33,17 @@ interface ToggleNurseryStatusResponse {
 }
 
 export const adminService = {
-  getGlobalStats: async (): Promise<GlobalStatsResponse> => {
-    const res: any = await api.get("/admin-dashboard/stats");
-    return res?.data ?? res;
+  getGlobalStats: async (
+    timeframe: TimeframeFilter = "this_month"
+  ): Promise<GlobalStatsResponse & IAdminDashboardResponse> => {
+    const res: any = await api.get(
+      `/dashboard/admin/dashboard?timeframe=${encodeURIComponent(timeframe)}`
+    );
+    const payload = res?.data ?? res;
+    return {
+      ...payload,
+      stats: payload?.metrics ?? payload?.stats ?? payload,
+    };
   },
   getAllOrders: async (): Promise<AllOrdersResponse> => {
     const res: any = await api.get("/orders/admin/all");

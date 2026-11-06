@@ -3,19 +3,20 @@
 import React, { useState } from "react";
 import Sidebar, { MenuItem } from "@/components/dashboard-common/Sidebar";
 import Navbar from "@/components/dashboard-common/Navbar";
-import { LayoutDashboard, ShoppingBag, Leaf, Users, Settings, Wallet, Mail, Building2, Percent, BadgePercent, RotateCcw } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, Leaf, Users, Settings, Wallet, Mail, Building2, Percent, BadgePercent, RotateCcw, Ticket, MessageSquare } from "lucide-react";
 import AdminFooter from "@/components/dashboard-common/Footer";
 const SUPER_ADMIN_MENU: MenuItem[] = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Orders", href: "/admin/orders", icon: ShoppingBag },
   { name: "Returns / Claims", href: "/admin/return-replacement-requests", icon: RotateCcw },
+  { name: "Coupons", href: "/admin/coupons", icon: Ticket },
   { name: "Bulk Orders", href: "/admin/bulk-orders", icon: Building2 },
   { name: "Vendor Payouts", href: "/admin/payouts", icon: Wallet },
   { name: "Inventory", href: "/admin/inventory", icon: Leaf },
   { name: "Users & Vendors", href: "/admin/users", icon: Users },
   { name: "Nursery Request", href: "/admin/nursery-applications", icon: Users },
   { name: "Subscribers", href: "/admin/newsletter-subscribers", icon: Mail },
-  { name: "Reviews", href: "/admin/reviews", icon: Users },
+  { name: "Reviews", href: "/admin/reviews", icon: MessageSquare },
   { name: "Blogs", href: "/admin/blogs", icon: Users },
   { name: "Tax Settings", href: "/admin/tax-settings", icon: Percent },
   { name: "Product Commission", href: "/admin/product-commission", icon: BadgePercent },

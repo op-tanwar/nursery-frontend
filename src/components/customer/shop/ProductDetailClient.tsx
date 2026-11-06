@@ -278,7 +278,7 @@ export default function ProductDetailClient({
         careInstructions: extractCareInstructions(rawProduct, attrs),
         benefits: extractBenefits(rawProduct, attrs),
         galleryImages: rawProduct.images?.map((img: any) => (typeof img === "string" ? img : img.url)) || [FALLBACK_EMOJI[shopType]],
-        verifiedReviews: rawProduct.reviews?.map((rev: any) => ({ author: rev.name || "Anonymous", rating: rev.rating || 5, date: "Recent", comment: rev.comment || "No comment.", verified: true })) || [],
+        verifiedReviews: rawProduct.reviews?.map((rev: any) => ({ author: rev.name || "Anonymous", rating: rev.rating || 5, date: "Recent", comment: rev.comment || "No comment.", verified: Boolean(rev.isVerifiedBuyer ?? rev.verified) })) || [],
         metaTitle: rawProduct.metaTitle,
         metaDescription: rawProduct.metaDescription,
 

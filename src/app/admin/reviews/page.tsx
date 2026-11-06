@@ -1,226 +1,299 @@
 "use client";
 
-import React, { useState } from "react";
-import DataTable, { ColumnConfig } from "@/components/dashboard-common/DataTable";
-import { productService } from "@/services/productService";
-import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import React, { useState, useEffect, useCallback, useTransition } from "react";
+import { MessageSquare, RefreshCw, AlertCircle, Sparkles } from "lucide-react";
+import toast from "react-hot-toast";
+import { reviewService } from "@/services/reviewService";
 import {
-  setProductLoading,
-  setProductError,
-  setProductReviews,
-  deleteReviewFromState,
-} from "@/redux/slices/productSlice";
-import { MessageSquare, ShieldAlert, Trash2, Search, RefreshCw, Star } from "lucide-react";
+  IAdminReviewItem,
+  IAdminReviewStats,
+  ReviewStatus,
+} from "@/types/review.types";
+import ReviewStatsCards from "./_components/ReviewStatsCards";
+import ReviewControlBar from "./_components/ReviewControlBar";
+import ReviewTable from "./_components/ReviewTable";
 
-interface ReviewRecord {
-  _id?: string;
-  user?: string;
-  name: string;
-  rating: number;
-  comment: string;
-  createdAt?: string;
-}
+export default function AdminReviewsModerationPage() {
+  const [reviews, setReviews] = useState<IAdminReviewItem[]>([]);
+  const [stats, setStats] = useState<IAdminReviewStats>({
+    totalReviews: 0,
+    pendingReviews: 0,
+    flaggedReviews: 0,
+    approvedReviews: 0,
+    rejectedReviews: 0,
+    avgRating: 0,
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-export default function AdminPlantReviews() {
-  const dispatch = useAppDispatch();
-  const { currentReviews, isLoading, error } = useAppSelector((state) => state.product);
+  // Filters & Search
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<"all" | ReviewStatus>("all");
+  const [ratingFilter, setRatingFilter] = useState<"all" | number>("all");
+  const [sortBy, setSortBy] = useState<
+    "createdAt:desc" | "createdAt:asc" | "rating:desc" | "rating:asc"
+  >("createdAt:desc");
 
-  const [productIdInput, setProductIdInput] = useState<string>("");
-  const [searchedProductId, setSearchedProductId] = useState<string>("");
+  // Pagination
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(20);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalCount, setTotalCount] = useState<number>(0);
 
-  const fetchReviewsData = async (targetId: string) => {
-    if (!targetId.trim()) return;
+  // Selection & Actions
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [mutatingId, setMutatingId] = useState<string | null>(null);
+  const [isBulkLoading, setIsBulkLoading] = useState<boolean>(false);
 
-    dispatch(setProductLoading(true));
-    dispatch(setProductError(null));
+  // Debounce search input by 300ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1); // reset to page 1 on new search
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  /**
+   * 📡 Fetch paginated reviews and KPI metrics
+   */
+  const loadReviewsData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
 
     try {
-      const response = await productService.getProductByIdOrSlug(targetId.trim());
-      const extractedReviews = response.product?.reviews || [];
+      const response = await reviewService.getAdminGlobalReviews({
+        page: currentPage,
+        limit: pageSize,
+        status: statusFilter,
+        rating: ratingFilter,
+        search: debouncedSearch,
+        sortBy: sortBy,
+      });
 
-      dispatch(setProductReviews(extractedReviews));
-      setSearchedProductId(targetId.trim());
-    } catch (err: any) {
-      dispatch(
-        setProductError(
-          err?.response?.data?.message || err?.message || "No product found or failed to fetch reviews."
-        )
-      );
-    }
-  };
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchReviewsData(productIdInput);
-  };
-
-  const handleReload = () => {
-    if (searchedProductId) {
-      fetchReviewsData(searchedProductId);
-    }
-  };
-
-  const handleDeleteReview = async (reviewId: string, authorName: string) => {
-    if (!searchedProductId) return;
-
-    if (
-      window.confirm(
-        `Are you absolutely sure you want to completely purge the review submitted by "${authorName}"?`
-      )
-    ) {
-      try {
-        await productService.deleteProductReview(searchedProductId, reviewId);
-        dispatch(deleteReviewFromState(reviewId));
-        alert("Review record deleted successfully.");
-      } catch (err: any) {
-        alert(err?.response?.data?.message || err?.message || "Operation failed.");
+      if (response && response.success) {
+        setReviews(response.reviews || []);
+        if (response.stats) {
+          setStats(response.stats);
+        }
+        if (response.pagination) {
+          setTotalCount(response.pagination.total);
+          setTotalPages(response.pagination.totalPages);
+        }
+      } else {
+        throw new Error("Invalid response received from review moderation service");
       }
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to load reviews moderation queue.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, pageSize, statusFilter, ratingFilter, debouncedSearch, sortBy]);
+
+  useEffect(() => {
+    loadReviewsData();
+  }, [loadReviewsData]);
+
+  // Handle single review status update
+  const handleUpdateStatus = async (reviewId: string, newStatus: ReviewStatus) => {
+    setMutatingId(reviewId);
+    try {
+      const res = await reviewService.updateReviewStatus(reviewId, newStatus);
+      if (res && res.success) {
+        toast.success(`Review marked as ${newStatus}.`);
+
+        // Update local state optimistically
+        setReviews((prev) =>
+          prev.map((r) => (r._id === reviewId ? { ...r, status: newStatus } : r))
+        );
+
+        // Refresh stats
+        const freshData = await reviewService.getAdminGlobalReviews({
+          page: currentPage,
+          limit: pageSize,
+          status: statusFilter,
+          rating: ratingFilter,
+          search: debouncedSearch,
+          sortBy: sortBy,
+        });
+        if (freshData?.stats) {
+          setStats(freshData.stats);
+        }
+      }
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || err?.message || "Failed to update review status."
+      );
+    } finally {
+      setMutatingId(null);
     }
   };
 
-  const columns: ColumnConfig<ReviewRecord>[] = [
-    {
-      header: "Review ID",
-      accessorKey: "_id",
-      className: "font-mono text-[11px] text-slate-400 font-semibold tracking-tight",
-    },
-    {
-      header: "User Identity Context",
-      accessorKey: "name",
-      cell: (row) => (
-        <div className="flex flex-col gap-0.5">
-          <span className="font-bold text-slate-900 text-xs">{row.name}</span>
-          <span className="text-slate-400 text-[10px] font-mono select-all">UID: {row.user || "N/A"}</span>
-        </div>
-      ),
-    },
-    {
-      header: "Rating Metric Score",
-      accessorKey: "rating",
-      cell: (row) => {
-        const ratingColors =
-          row.rating >= 4
-            ? "text-amber-600 bg-amber-50 border-amber-100"
-            : "text-slate-600 bg-slate-50 border-slate-150";
-        return (
-          <span
-            className={`inline-flex items-center font-black text-[10px] px-2 py-0.5 rounded-md border gap-1 ${ratingColors}`}
-          >
-            <Star className="w-2.5 h-2.5 fill-current" />
-            {row.rating.toFixed(1)}
-          </span>
-        );
-      },
-    },
-    {
-      header: "Feedbacks & System Comments",
-      accessorKey: "comment",
-      className: "max-w-xs md:max-w-md break-words",
-      cell: (row) => (
-        <span className="text-slate-600 font-medium text-xs tracking-tight line-clamp-2 hover:line-clamp-none transition-all duration-150 block">
-          {row.comment || <em className="text-slate-300 font-normal">"No textual response content provided"</em>}
-        </span>
-      ),
-    },
-    {
-      header: "Creation Date Timestamp",
-      accessorKey: "createdAt",
-      cell: (row) => (
-        <span className="text-slate-400 font-medium text-[11px] font-mono">
-          {row.createdAt
-            ? new Date(row.createdAt).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })
-            : "N/A"}
-        </span>
-      ),
-    },
-    {
-      header: "Administrative Controls",
-      accessorKey: "_id",
-      className: "text-center",
-      cell: (row) => (
-        <button
-          type="button"
-          title="Purge Feedback"
-          onClick={() => handleDeleteReview(row._id || "", row.name)}
-          className="p-1.5 border border-slate-200 hover:border-red-200 hover:bg-red-50/60 rounded-lg bg-white text-slate-400 hover:text-red-600 cursor-pointer transition-all inline-flex"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
-      ),
-    },
-  ];
+  // Handle single review permanent deletion
+  const handleDeleteReview = async (reviewId: string, authorName: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete the review by "${authorName}"? This action cannot be undone.`
+    );
+    if (!confirmed) return;
 
-  const safeGridData: ReviewRecord[] = Array.isArray(currentReviews) ? (currentReviews as ReviewRecord[]) : [];
+    setMutatingId(reviewId);
+    try {
+      const res = await reviewService.deleteAdminReview(reviewId);
+      if (res && res.success) {
+        toast.success("Review deleted successfully.");
+        // Remove from local reviews
+        setReviews((prev) => prev.filter((r) => r._id !== reviewId));
+        setSelectedIds((prev) => prev.filter((id) => id !== reviewId));
+        setTotalCount((prev) => Math.max(0, prev - 1));
+
+        // Re-fetch to synchronize state
+        loadReviewsData();
+      }
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || err?.message || "Failed to delete review."
+      );
+    } finally {
+      setMutatingId(null);
+    }
+  };
+
+  // Handle bulk action on selected reviews
+  const handleBulkAction = async (status: ReviewStatus) => {
+    if (selectedIds.length === 0) return;
+
+    setIsBulkLoading(true);
+    try {
+      const res = await reviewService.bulkUpdateReviewStatus(selectedIds, status);
+      if (res && res.success) {
+        toast.success(`Updated ${res.updatedCount || selectedIds.length} reviews to ${status}.`);
+        setSelectedIds([]);
+        loadReviewsData();
+      }
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || err?.message || "Bulk operation failed."
+      );
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  // Selection toggles
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (reviews.length === 0) return;
+    const allSelected = reviews.every((r) => selectedIds.includes(r._id));
+    if (allSelected) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(reviews.map((r) => r._id));
+    }
+  };
 
   return (
-    <div className="flex flex-col gap-6 md:gap-8 w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 m-0 flex items-center gap-2">
-            <MessageSquare className="w-6 h-6 text-slate-800 shrink-0" />
-            Product Reviews Management
-          </h1>
-          <p className="text-slate-500 font-medium text-xs sm:text-sm mt-1">
-            Search, inspect, and moderate verified buyer reviews across the catalog.
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-emerald-100 text-emerald-800 rounded-lg">
+              <MessageSquare className="w-5 h-5" />
+            </div>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight">
+              Customer Reviews Moderation Queue
+            </h1>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Global review audit system: verify purchases, moderate flagged content, approve feedback, and protect platform rating integrity.
           </p>
         </div>
+
+        <button
+          onClick={loadReviewsData}
+          disabled={isLoading}
+          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50 self-start sm:self-auto"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin text-emerald-600" : ""}`} />
+          <span>Refresh Queue</span>
+        </button>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
-        <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              required
-              value={productIdInput}
-              onChange={(e) => setProductIdInput(e.target.value)}
-              placeholder="Enter Product ID or Slug..."
-              className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent font-mono"
-            />
+      {/* KPI Stats Overview */}
+      <ReviewStatsCards stats={stats} isLoading={isLoading} />
+
+      {/* Error Alert */}
+      {error && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-3 text-rose-800 text-xs">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+          <div className="flex-1">
+            <strong className="font-bold">Error loading queue: </strong>
+            <span>{error}</span>
           </div>
           <button
-            type="submit"
-            disabled={isLoading || !productIdInput.trim()}
-            className="w-full sm:w-auto px-5 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white font-semibold text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+            onClick={loadReviewsData}
+            className="text-xs font-bold underline hover:no-underline text-rose-700"
           >
-            {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            Fetch Reviews
-          </button>
-        </form>
-      </div>
-
-      {error && (
-        <div className="flex items-center gap-3 bg-red-50 border border-red-200 p-4 rounded-xl text-red-700 text-xs sm:text-sm">
-          <ShieldAlert className="w-5 h-5 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {searchedProductId && (
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-500">
-            Showing reviews for: <code className="bg-slate-100 px-2 py-0.5 rounded font-mono">{searchedProductId}</code>
-          </span>
-          <button
-            type="button"
-            onClick={handleReload}
-            className="text-xs text-slate-600 hover:text-slate-900 font-semibold flex items-center gap-1 cursor-pointer"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Refresh
+            Retry
           </button>
         </div>
       )}
 
-      <DataTable<ReviewRecord>
-        columns={columns}
-        data={safeGridData}
-        searchKey="name"
-        searchPlaceholder="Filter reviews by reviewer..."
+      {/* Control Bar: Filters, Search, Tabs, Bulk Operations */}
+      <ReviewControlBar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        statusFilter={statusFilter}
+        onStatusChange={(status) => {
+          setStatusFilter(status);
+          setCurrentPage(1);
+        }}
+        ratingFilter={ratingFilter}
+        onRatingChange={(rating) => {
+          setRatingFilter(rating);
+          setCurrentPage(1);
+        }}
+        sortBy={sortBy}
+        onSortChange={(sort) => {
+          setSortBy(sort);
+          setCurrentPage(1);
+        }}
+        selectedCount={selectedIds.length}
+        onBulkAction={handleBulkAction}
+        onClearSelection={() => setSelectedIds([])}
+        isBulkLoading={isBulkLoading}
+      />
+
+      {/* Reviews Data Table & Pagination */}
+      <ReviewTable
+        reviews={reviews}
+        isLoading={isLoading}
+        selectedIds={selectedIds}
+        onToggleSelect={handleToggleSelect}
+        onToggleSelectAll={handleToggleSelectAll}
+        onUpdateStatus={handleUpdateStatus}
+        onDeleteReview={handleDeleteReview}
+        mutatingId={mutatingId}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(newSize) => {
+          setPageSize(newSize);
+          setCurrentPage(1);
+        }}
       />
     </div>
   );

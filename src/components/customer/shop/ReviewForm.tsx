@@ -39,14 +39,16 @@ export default function ReviewForm({ itemId, onAddReview }: ReviewFormProps) {
         comment: formComment.trim(),
       };
 
-      await productService.submitProductReview(itemId, reviewPayload);
+      const res: any = await productService.submitProductReview(itemId, reviewPayload);
+      const resData = res?.data || res;
+      const isVerified = Boolean(resData?.isVerifiedBuyer);
 
       const newReview: ReviewType = {
         author: formName.trim(),
         rating: formRating,
         date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }),
         comment: formComment.trim(),
-        verified: true,
+        verified: isVerified,
       };
 
       onAddReview(newReview);

@@ -246,11 +246,11 @@ export const nurseryService = {
   // 🪜 7. PLANT STANDS & SHELVES PIPELINES
   // ======================================================================
   getMyPlantStandsShelves: async (): Promise<NurseryInventoryResponse> => {
-    return nurseryService.getMyProducts("stands-shelves");
+    return nurseryService.getMyProducts("plant-stands-shelves");
   },
 
   createPlantStandsShelves: async (formData: FormData): Promise<GenericMutationResponse> => {
-    if (!formData.has("category")) formData.append("category", "stands-shelves");
+    if (!formData.has("category")) formData.append("category", "plant-stands-shelves");
     return nurseryService.createProduct(formData);
   },
 

@@ -10,7 +10,7 @@ import { setNurseryLoading, setNurseryError, addPotToNurseryState } from "@/redu
 import { nurseryService } from "@/services/nurseryService";
 import { ArrowLeft, Plus, Trash2, Image as ImageIcon, Loader2, Archive, CheckCircle } from "lucide-react";
 
-export const AVAILABLE_POT_CATEGORIES = [
+const AVAILABLE_POT_CATEGORIES = [
   "Ceramic Pots",
   "Terracotta & Clay Planters",
   "Plastic & Resin Pots",

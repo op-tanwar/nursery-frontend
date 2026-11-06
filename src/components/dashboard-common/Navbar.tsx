@@ -17,6 +17,7 @@ import {
 import toast from "react-hot-toast";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { logout } from "@/redux/slices/authSlice";
+import { authService } from "@/services/authService";
 
 interface NavbarProps {
   onMenuTrigger: () => void;
@@ -60,12 +61,14 @@ export default function Navbar({
   }, []);
 
   // Clean Logout Action
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setIsDropdownOpen(false);
 
-    // Clear auth cookies
-    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-    document.cookie = "role=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    try {
+      await authService.logoutUser();
+    } catch {
+      // Continue client cleanup even on network failure
+    }
 
     dispatch(logout());
     toast.success("Logged out successfully");

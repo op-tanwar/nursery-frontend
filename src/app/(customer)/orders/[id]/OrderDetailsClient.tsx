@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { orderService } from "@/services/orderService";
-import { returnReplacementService } from "@/services/returnReplacementService";
+import { claimService } from "@/services/claimService";
 import { formatINR } from "@/types/dashboard.types";
 import { getProductShopUrl } from "@/utils/productUrl";
 import WriteReviewModal from "@/components/customer/orders/WriteReviewModal";
@@ -109,7 +109,7 @@ export default function OrderDetailsClient({
 
         // Fetch any existing return/replacement requests for this order
         try {
-          const reqRes = await returnReplacementService.getOrderRequests(orderId);
+          const reqRes = await claimService.getOrderClaims(orderId);
           if (reqRes?.requests && Array.isArray(reqRes.requests)) {
             const statusMap: Record<string, string> = {};
             const dataMap: Record<string, any> = {};

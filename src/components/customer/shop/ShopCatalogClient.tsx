@@ -69,7 +69,7 @@ const TAB_TO_CATEGORY: Record<ShopTabType, string | undefined> = {
   "Gardening Tools": "gardening-tools",
   "Plant Care": "plant-care",
   "Seeds & Bulbs": "seeds-bulbs",
-  "Plant Stands": "stands-shelves",
+  "Plant Stands": "plant-stands-shelves",
   "Artificial & Dried Plants": "artificial-dried",
 };
 
@@ -80,6 +80,7 @@ const CATEGORY_TO_URL_TYPE: Record<string, ShopUrlType> = {
   "gardening-tools": "gardening-tools",
   "plant-care": "plant-care",
   "seeds-bulbs": "seeds-bulbs",
+  "plant-stands-shelves": "plant-stands-shelves",
   "stands-shelves": "plant-stands-shelves",
   "artificial-dried": "artificial-dried-plants",
 };

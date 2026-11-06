@@ -96,7 +96,7 @@ const DOCUMENT_METAS: DocumentMeta[] = [
 ];
 
 interface PageProps {
-  params?: Promise<{ nurseryId?: string }> | { nurseryId?: string };
+  params: Promise<{ nurseryId?: string }>;
 }
 
 export default function AdminNurseryVerificationPage(props: PageProps) {
@@ -104,21 +104,8 @@ export default function AdminNurseryVerificationPage(props: PageProps) {
   const routeParams = useParams();
 
   // Safely resolve nurseryId from props or useParams
-  let nurseryId = "";
-  if (routeParams?.nurseryId) {
-    nurseryId = String(routeParams.nurseryId);
-  } else if (props?.params) {
-    if (typeof (props.params as any)?.then === "function") {
-      try {
-        const resolved = use(props.params as Promise<{ nurseryId?: string }>);
-        nurseryId = resolved?.nurseryId || "";
-      } catch {
-        nurseryId = "";
-      }
-    } else {
-      nurseryId = (props.params as { nurseryId?: string })?.nurseryId || "";
-    }
-  }
+  const resolvedParams = props?.params ? use(props.params) : null;
+  const nurseryId = String(routeParams?.nurseryId || resolvedParams?.nurseryId || "");
 
   const [profile, setProfile] = useState<INurseryProfile | null>(null);
   const [vendorData, setVendorData] = useState<any>(null);

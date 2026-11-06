@@ -136,32 +136,20 @@ export default function SocialLoginButtons({
    * Finalize login session state & role-based redirection
    */
   const handleAuthSuccess = (resData: any) => {
-    if (!resData?.user || !resData?.token) {
+    if (!resData?.user) {
       throw new Error("Invalid response received from server");
     }
 
-    const { user, token } = resData;
+    const { user } = resData;
     const userRole = user.role || "user";
 
-    // 1. Redux State Store
-    dispatch(setCredentials({ user, token }));
-
-    // 2. LocalStorage Sync
-    localStorage.setItem("urban_nursery_role", userRole);
-    localStorage.setItem("urban_nursery_token", token);
-    localStorage.setItem("urban_nursery_user", JSON.stringify(user));
-    localStorage.setItem("planto_role", userRole);
-    localStorage.setItem("planto_token", token);
-    localStorage.setItem("planto_user", JSON.stringify(user));
-
-    // 3. Local cookie binding for Next.js Middleware & SSR
-    const isProd = process.env.NODE_ENV === "production";
-    document.cookie = `role=${userRole}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax;${isProd ? " Secure;" : ""}`;
-    document.cookie = `token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax;${isProd ? " Secure;" : ""}`;
+    // 1. Redux State Store (Pure state, zero client-persisted JWT)
+    dispatch(setCredentials({ user }));
 
     toast.success(`Welcome, ${user.name || "friend"}!`, { id: "social-auth-toast" });
 
-    // 4. Automatic Post-Login Cart Sync & Preserved Redirection
+    // 2. Automatic Post-Login Cart Sync & Preserved Redirection
+    // Auth cookies are set exclusively as httpOnly by the backend
     const targetUrl = getPostAuthRedirectUrl(userRole);
     syncCartOnAuthSuccess(dispatch).finally(() => {
       setTimeout(() => {

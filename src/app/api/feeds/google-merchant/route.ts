@@ -1,7 +1,15 @@
-import { SITE_URL } from "@/config/site";
+import { SITE_URL } from "../../../../config/site";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 3600; // 1 hour
+// ======================================================================
+// ⚡ NEXT.JS APP ROUTER ROUTE SEGMENT CONFIGURATION (SSOT)
+// ======================================================================
+// Google Merchant XML feeds should be statically cached and periodically
+// revalidated via ISR (Incremental Static Regeneration). Combining
+// 'force-dynamic' with 'revalidate' is mutually contradictory in App Router.
+// Retaining 'revalidate = 3600' ensures crawlers receive cached, low-latency
+// XML without hammering the database or origin API on every fetch.
+// ======================================================================
+export const revalidate = 3600; // 1 hour ISR revalidation interval
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://nursery-backend-2rg3.onrender.com/api/v1";
@@ -19,9 +27,9 @@ interface FeedProduct {
   googleProductCategory: string;
 }
 
-function escapeXml(str: string): string {
-  if (!str) return "";
-  return str
+function escapeXml(str: any): string {
+  if (str === null || str === undefined) return "";
+  return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -114,21 +122,22 @@ async function fetchProductsForMerchantFeed(): Promise<FeedProduct[]> {
         }
       }
     } catch {
-      // Non-blocking fallback
+      // Non-blocking fallback per endpoint
     }
   }
 
   return items.length > 0 ? items : FALLBACK_FEED_ITEMS;
 }
 
-export async function GET() {
-  const items = await fetchProductsForMerchantFeed();
-
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+/**
+ * Pure generator to convert feed items into Google Merchant Center RSS 2.0 XML
+ */
+function generateGoogleMerchantXml(items: FeedProduct[]): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
   <channel>
     <title>Urban Nursery India - Certified Live Plants &amp; Planters Feed</title>
-    <link>${SITE_URL}</link>
+    <link>${escapeXml(SITE_URL)}</link>
     <description>Automated Google Merchant Center Product Feed for Urban Nursery India.</description>
 ${items
       .map(
@@ -139,7 +148,7 @@ ${items
       <g:link>${escapeXml(item.link)}</g:link>
       <g:image_link>${escapeXml(item.imageLink)}</g:image_link>
       <g:availability>${item.availability === "in_stock" ? "in stock" : "out of stock"}</g:availability>
-      <g:price>${item.price.toFixed(2)} INR</g:price>
+      <g:price>${(Number(item.price) || 0).toFixed(2)} INR</g:price>
       <g:brand>${escapeXml(item.brand)}</g:brand>
       <g:google_product_category>${escapeXml(item.googleProductCategory)}</g:google_product_category>
       <g:condition>new</g:condition>
@@ -148,12 +157,54 @@ ${items
       .join("\n")}
   </channel>
 </rss>`;
+}
 
-  return new Response(xml, {
-    headers: {
-      "Content-Type": "application/xml; charset=utf-8",
-      "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=7200",
-      "X-Robots-Tag": "noindex, follow",
-    },
-  });
+export async function GET() {
+  try {
+    const items = await fetchProductsForMerchantFeed();
+    const xml = generateGoogleMerchantXml(items);
+
+    return new Response(xml, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/xml; charset=utf-8",
+        "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400",
+        "X-Robots-Tag": "noindex, follow",
+      },
+    });
+  } catch (err: any) {
+    console.error("[GoogleMerchantFeed] Failed to generate XML feed:", err);
+
+    // Resilient fallback 1: Attempt generating fallback items
+    try {
+      const fallbackXml = generateGoogleMerchantXml(FALLBACK_FEED_ITEMS);
+      return new Response(fallbackXml, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/xml; charset=utf-8",
+          "Cache-Control": "public, max-age=300, s-maxage=300, stale-while-revalidate=600",
+          "X-Robots-Tag": "noindex, follow",
+        },
+      });
+    } catch {
+      // Resilient fallback 2: Return valid XML error envelope (never malformed HTML)
+      const errorXml = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+  <channel>
+    <title>Urban Nursery India - Google Merchant Feed</title>
+    <link>${escapeXml(SITE_URL)}</link>
+    <description>Google Merchant Feed temporarily unavailable</description>
+  </channel>
+</rss>`;
+
+      return new Response(errorXml, {
+        status: 503,
+        headers: {
+          "Content-Type": "application/xml; charset=utf-8",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "X-Robots-Tag": "noindex, nofollow",
+        },
+      });
+    }
+  }
 }

@@ -15,7 +15,7 @@ import {
 } from "@/components/nursery/ProductGalleryManager";
 import { ArrowLeft, Plus, Trash2, Image as ImageIcon, Loader2, Wrench, Save, AlertCircle } from "lucide-react";
 
-export const TOOL_CATEGORIES = [
+const TOOL_CATEGORIES = [
   "Hand Tools",
   "Watering Equipment",
   "Pruning & Cutting Tools",

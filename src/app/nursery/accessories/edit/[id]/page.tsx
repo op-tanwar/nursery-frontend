@@ -21,7 +21,7 @@ import {
 import { ArrowLeft, Plus, Trash2, Image as ImageIcon, Loader2, Sliders, Save, AlertCircle } from "lucide-react";
 
 // Predefined catalog categories for accessory assets schema matrix
-export const AVAILABLE_ACCESSORY_CATEGORIES = [
+const AVAILABLE_ACCESSORY_CATEGORIES = [
   "Gardening Tools",
   "Fertilizers & Soil",
   "Pest Control",

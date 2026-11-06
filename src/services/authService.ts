@@ -65,4 +65,12 @@ export const authService = {
   socialLogin: async (payload: SocialLoginPayload) => {
     return await api.post("/auth/social-login", payload);
   },
+
+  /**
+   * 7. Current Authenticated Session Validation (HTTP-only Cookie Verification)
+   * URL: /auth/me
+   */
+  getMe: async () => {
+    return await api.get("/auth/me");
+  },
 };

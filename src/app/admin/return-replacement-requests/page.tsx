@@ -28,7 +28,7 @@ import {
   Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { returnReplacementService } from "@/services/returnReplacementService";
+import { claimService } from "@/services/claimService";
 import {
   IReturnReplacementRequest,
   RequestStatus,
@@ -54,7 +54,7 @@ export default function AdminReturnReplacementPage() {
   const fetchRequests = async () => {
     setIsLoading(true);
     try {
-      const res = await returnReplacementService.getAllAdminRequests();
+      const res = await claimService.getAllAdminClaims();
       if (res && res.requests) {
         setRequests(res.requests);
       }
@@ -146,7 +146,7 @@ export default function AdminReturnReplacementPage() {
     const toastId = toast.loading(`Updating status to ${targetStatus}...`);
 
     try {
-      await returnReplacementService.updateAdminStatus(
+      await claimService.updateClaimStatus(
         selectedRequest._id,
         targetStatus,
         adminNotes.trim()

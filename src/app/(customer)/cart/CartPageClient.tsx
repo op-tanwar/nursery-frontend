@@ -17,7 +17,7 @@ import {
   removeFromGuestCartAction,
 } from "@/redux/slices/cartSlice";
 import { cartService } from "@/services/cartWishlistService";
-import { calculateCartTotals, getEffectivePrice, CategoryTaxConfig } from "@/utils/pricing";
+import { calculateCartTotals, getEffectivePrice, CategoryTaxConfig, normalizeTaxCategory } from "@/utils/pricing";
 import { taxService } from "@/services/taxService";
 
 interface ProductImage {
@@ -84,9 +84,15 @@ export default function CartPage() {
         if (Array.isArray(list) && list.length > 0) {
           const map: Record<string, CategoryTaxConfig> = {};
           list.forEach((t: any) => {
-            map[t.category] = { taxPercentage: t.taxPercentage, isTaxInclusive: t.isTaxInclusive };
-            if (t.itemModel) {
-              map[t.itemModel] = { taxPercentage: t.taxPercentage, isTaxInclusive: t.isTaxInclusive };
+            const conf: CategoryTaxConfig = {
+              taxPercentage: Number(t.taxPercentage) || 0,
+              isTaxInclusive: Boolean(t.isTaxInclusive),
+            };
+            if (t.category) map[t.category] = conf;
+            if (t.itemModel) map[t.itemModel] = conf;
+            const meta = normalizeTaxCategory(t.category || t.itemModel);
+            if (meta.isRecognized && meta.slug) {
+              map[meta.slug] = conf;
             }
           });
           setTaxMap(map);

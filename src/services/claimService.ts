@@ -1,64 +1,124 @@
 import { api } from "@/config/api";
 import {
-  CreateReturnReplacementPayload,
-  ReturnReplacementResponse,
-  AllReturnReplacementsResponse,
-} from "@/types/returnReplacement.types";
+  CreateClaimPayload,
+  GetClaimsQuery,
+  UpdateClaimStatusPayload,
+  ClaimResponse,
+  ClaimListResponse,
+} from "@/types/claim.types";
 
+/**
+ * 🌿 Canonical Claim, Return & Replacement Service
+ * Centralized client for all customer claims, returns, damaged item disputes,
+ * nursery merchant review feeds, and central admin audits.
+ *
+ * Aligned with backend router: `/api/v1/claims`
+ */
 export const claimService = {
-  // Customer: Create Return, Replacement, or Damage Claim Request
+  /**
+   * 👤 Customer: Create a Claim / Return / Replacement Request
+   * Supports both multipart FormData (with image/video uploads) and JSON payloads.
+   */
   createClaim: async (
-    payload: FormData | CreateReturnReplacementPayload
-  ): Promise<ReturnReplacementResponse> => {
-    const res = await api.post<any, ReturnReplacementResponse>(
-      "/claims/create",
+    payload: FormData | CreateClaimPayload
+  ): Promise<ClaimResponse> => {
+    return api.post<any, ClaimResponse>("/claims/create", payload);
+  },
+
+  /**
+   * 👤 Customer: Retrieve all claims submitted for a specific order
+   */
+  getOrderClaims: async (orderId: string): Promise<ClaimListResponse> => {
+    return api.get<any, ClaimListResponse>(`/claims/order/${encodeURIComponent(orderId)}`);
+  },
+
+  /**
+   * 👤 Customer: Retrieve all claims filed by the currently authenticated user
+   */
+  getUserClaims: async (): Promise<ClaimListResponse> => {
+    return api.get<any, ClaimListResponse>("/claims/me");
+  },
+
+  /**
+   * 🔍 Details: Fetch full details for a single claim record by ID
+   */
+  getClaimById: async (id: string): Promise<ClaimResponse> => {
+    return api.get<any, ClaimResponse>(`/claims/single/${encodeURIComponent(id)}`);
+  },
+
+  /**
+   * 🛡️ Central Admin: Get all platform claims with optional status/type/pagination filters
+   */
+  getAllAdminClaims: async (params?: GetClaimsQuery): Promise<ClaimListResponse> => {
+    return api.get<any, ClaimListResponse>("/claims/admin/all", { params });
+  },
+
+  /**
+   * 🛡️ Central Admin: Update claim lifecycle status, admin notes, refunds, or tracking
+   */
+  updateClaimStatus: async (
+    id: string,
+    statusOrPayload: string | UpdateClaimStatusPayload,
+    adminNotes?: string
+  ): Promise<ClaimResponse> => {
+    const payload: UpdateClaimStatusPayload =
+      typeof statusOrPayload === "string"
+        ? { status: statusOrPayload, adminNotes }
+        : statusOrPayload;
+
+    return api.patch<any, ClaimResponse>(
+      `/claims/admin/${encodeURIComponent(id)}/status`,
       payload
     );
-    return res;
   },
 
-  // Customer: Get Claims for specific order
-  getOrderClaims: async (
-    orderId: string
-  ): Promise<{ success: boolean; requests: any[]; claims?: any[] }> => {
-    const res = await api.get<any, { success: boolean; requests: any[]; claims?: any[] }>(
-      `/claims/order/${orderId}`
+  /**
+   * 🏡 Nursery Merchant: Get all claims assigned to this nursery vendor
+   */
+  getNurseryClaims: async (): Promise<ClaimListResponse> => {
+    return api.get<any, ClaimListResponse>("/claims/nursery/my-requests");
+  },
+
+  /**
+   * 🚫 Customer / Admin: Cancel an open claim request
+   */
+  cancelClaim: async (id: string, reason?: string): Promise<ClaimResponse> => {
+    return api.patch<any, ClaimResponse>(
+      `/claims/admin/${encodeURIComponent(id)}/status`,
+      {
+        status: "REJECTED",
+        adminNotes: reason || "Cancelled by user request.",
+      }
     );
-    return res;
   },
 
-  // Central Admin: Get all claims with optional status/type filter
-  getAllAdminClaims: async (params?: {
-    status?: string;
-    type?: string;
-    requestType?: string;
-  }): Promise<AllReturnReplacementsResponse> => {
-    const res = await api.get<any, AllReturnReplacementsResponse>(
-      "/claims/admin/all",
-      { params }
-    );
-    return res;
+  // ======================================================================
+  // 🔄 Backward-Compatible Migration Aliases
+  // ======================================================================
+  createRequest: async (
+    payload: FormData | CreateClaimPayload
+  ): Promise<ClaimResponse> => {
+    return claimService.createClaim(payload);
   },
 
-  // Central Admin: Update status and notes
-  updateClaimStatus: async (
+  getOrderRequests: async (orderId: string): Promise<ClaimListResponse> => {
+    return claimService.getOrderClaims(orderId);
+  },
+
+  getAllAdminRequests: async (params?: GetClaimsQuery): Promise<ClaimListResponse> => {
+    return claimService.getAllAdminClaims(params);
+  },
+
+  updateAdminStatus: async (
     id: string,
     status: string,
     adminNotes?: string
-  ): Promise<ReturnReplacementResponse> => {
-    const res = await api.patch<any, ReturnReplacementResponse>(
-      `/claims/admin/${id}/status`,
-      { status, adminNotes }
-    );
-    return res;
+  ): Promise<ClaimResponse> => {
+    return claimService.updateClaimStatus(id, status, adminNotes);
   },
 
-  // Nursery Partner: Get claims associated with this nursery
-  getNurseryClaims: async (): Promise<AllReturnReplacementsResponse> => {
-    const res = await api.get<any, AllReturnReplacementsResponse>(
-      "/claims/nursery/my-requests"
-    );
-    return res;
+  getNurseryRequests: async (): Promise<ClaimListResponse> => {
+    return claimService.getNurseryClaims();
   },
 };
 

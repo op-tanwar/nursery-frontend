@@ -23,7 +23,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { returnReplacementService } from "@/services/returnReplacementService";
+import { claimService } from "@/services/claimService";
 import {
   IReturnReplacementRequest,
   RequestStatus,
@@ -41,7 +41,7 @@ export default function NurseryReturnReplacementPage() {
   const fetchRequests = async () => {
     setIsLoading(true);
     try {
-      const res = await returnReplacementService.getNurseryRequests();
+      const res = await claimService.getNurseryClaims();
       if (res && res.requests) {
         setRequests(res.requests);
       }

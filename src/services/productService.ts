@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { api } from "@/config/api";
 import {
   IProduct,
@@ -9,10 +10,55 @@ import {
   GenericProductMutationResponse,
 } from "@/types/product.types";
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://nursery-backend-2rg3.onrender.com/api/v1";
+
+/**
+ * ⚡ Single-Request Deduplicated Product Fetcher (Zero Waterfall, SSR-Safe)
+ * Wraps product-by-slug resolution in React.cache() so generateMetadata and
+ * Server Component executions within the same SSR request share the identical network dispatch.
+ * Accepts a scalar string slug for stable reference equality cache keying.
+ */
+export const getProductBySlug = cache(async (slug: string): Promise<IProduct | null> => {
+  if (!slug || typeof slug !== "string") return null;
+  const normalizedSlug = slug.trim().toLowerCase();
+  if (!normalizedSlug) return null;
+
+  try {
+    if (typeof fetch === "function") {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const res = await fetch(`${API_BASE_URL}/products/${encodeURIComponent(normalizedSlug)}`, {
+        headers: { "Content-Type": "application/json" },
+        next: { revalidate: 60, tags: [`product-${normalizedSlug}`] },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) return null;
+
+      const data = await res.json();
+      const product = data?.product || (data?._id ? data : null);
+      return (product as IProduct) || null;
+    }
+
+    const res: any = await api.get(`/products/${encodeURIComponent(normalizedSlug)}`);
+    const data = res?.data ?? res;
+    const product = data?.product || (data?._id ? data : null);
+    return (product as IProduct) || null;
+  } catch {
+    return null;
+  }
+});
+
 /**
  * 🌿 Centralized High-Performance Service for the Unified Polymorphic Product Catalog
  */
 export const productService = {
+  getProductBySlug,
+
   /**
    * Fetch paginated and filtered catalog across all categories or a specific category.
    * Supports safe regex keyword search, price range, nursery filter, and sorting.

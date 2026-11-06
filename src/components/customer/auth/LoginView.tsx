@@ -42,27 +42,14 @@ export default function LoginView({ onForgotPassword, isSessionExpired = false }
         // Backend se dynamic token payload ko verify karna
         const resData = response?.data || response;
 
-        if (resData?.user && resData?.token) {
+        if (resData?.user) {
           const userRole = resData.user.role;
-          const token = resData.token;
 
-          // 1. Central Redux state update (Empty string ki jagah actual token)
-          dispatch(setCredentials({ user: resData.user, token: token }));
+          // 1. Central Redux state update (Pure state, zero client-persisted JWT)
+          dispatch(setCredentials({ user: resData.user }));
 
-          // 2. Storage Sync
-          localStorage.setItem("urban_nursery_role", userRole);
-          localStorage.setItem("urban_nursery_token", token);
-          localStorage.setItem("urban_nursery_user", JSON.stringify(resData.user));
-          localStorage.setItem("planto_role", userRole);
-          localStorage.setItem("planto_token", token);
-          localStorage.setItem("planto_user", JSON.stringify(resData.user));
-
-          // 3. Cookie setup jo Next.js Middleware ko redirect loop se bachayega
-          const isProd = process.env.NODE_ENV === "production";
-          document.cookie = `role=${userRole}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax;${isProd ? " Secure;" : ""}`;
-          document.cookie = `token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax;${isProd ? " Secure;" : ""}`;
-
-          // 4. Automatic Post-Login Cart Sync & Preserved Redirection
+          // 2. Automatic Post-Login Cart Sync & Preserved Redirection
+          // Auth cookies (token & role) are set exclusively as httpOnly by the backend
           const targetUrl = getPostAuthRedirectUrl(userRole);
           syncCartOnAuthSuccess(dispatch).finally(() => {
             setTimeout(() => {

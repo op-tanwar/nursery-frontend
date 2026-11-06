@@ -266,7 +266,7 @@ export const resolveProductServer = cache(async function resolveProductServer(
           rating: rev.rating || 5,
           date: rev.createdAt ? new Date(rev.createdAt).toLocaleDateString() : "Recent",
           comment: rev.comment || "No comment.",
-          verified: true,
+          verified: Boolean(rev.isVerifiedBuyer ?? rev.verified),
         })) || [],
       metaTitle: raw.metaTitle,
       metaDescription: raw.metaDescription,

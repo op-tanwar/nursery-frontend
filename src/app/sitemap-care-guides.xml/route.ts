@@ -1,6 +1,5 @@
 import { SITE_URL } from "@/config/site";
 
-export const dynamic = "force-dynamic";
 export const revalidate = 7200; // 2 hours
 
 const API_BASE_URL =

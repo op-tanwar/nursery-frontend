@@ -21,7 +21,7 @@ import {
 import { ArrowLeft, Plus, Trash2, Image as ImageIcon, Loader2, Archive, Save, AlertCircle } from "lucide-react";
 
 // Standardized categories matching pot model and catalog
-export const AVAILABLE_POT_CATEGORIES = [
+const AVAILABLE_POT_CATEGORIES = [
   "Ceramic Pots",
   "Terracotta & Clay Planters",
   "Plastic & Resin Pots",

@@ -35,7 +35,7 @@ const NURSERY_MERCHANT_MENU: MenuItem[] = [
   { name: "Pots & Planters", href: "/nursery/pots", icon: FolderHeart },
   { name: "Plant Care", href: "/nursery/plant-care", icon: Droplets },
   { name: "Gardening Tools", href: "/nursery/gardening-tools", icon: Wrench },
-  { name: "Plant Stands", href: "/nursery/plant-stands-and-shelves", icon: Layers },
+  { name: "Plant Stands", href: "/nursery/plant-stands-shelves", icon: Layers },
   { name: "Artificial Plants", href: "/nursery/artificial-dried-plants", icon: Flower2 },
   { name: "Accessories", href: "/nursery/accessories", icon: Sparkles },
 

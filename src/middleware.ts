@@ -26,11 +26,11 @@ function clearAuthCookies(response: NextResponse): NextResponse {
     expires: new Date(0),
     sameSite: "lax" as const,
     secure: isProd,
-    httpOnly: false,
+    httpOnly: true,
   };
 
   response.cookies.set("token", "", cookieOptions);
-  response.cookies.set("role", "", cookieOptions);
+  response.cookies.set("role", "", { ...cookieOptions, httpOnly: false });
 
   return response;
 }

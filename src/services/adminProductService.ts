@@ -59,10 +59,10 @@ const RESOURCE_ROUTES: Record<AdminResourceType, ResourceRouteConfig> = {
   },
   plantStandsShelves: {
     base: "/products",
-    listPath: "stands-shelves",
+    listPath: "plant-stands-shelves",
     singularPath: "plantStandsShelves",
     responseKey: "plantStandsShelves",
-    shopType: "stands-shelves",
+    shopType: "plant-stands-shelves",
   },
   artificial: {
     base: "/products",

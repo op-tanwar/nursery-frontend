@@ -9,15 +9,19 @@ export type IProductImage = ICloudinaryImage;
 export const PRODUCT_CATEGORIES = [
   "plants",
   "pots",
+  "pots-planters",
   "accessories",
   "gardening-tools",
   "plant-care",
   "seeds-bulbs",
+  "plant-stands-shelves",
   "stands-shelves",
   "artificial-dried",
 ] as const;
 
 export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
+
+export type ReviewStatus = "pending" | "approved" | "flagged" | "rejected";
 
 export interface IProductReview {
   _id?: string;
@@ -26,6 +30,7 @@ export interface IProductReview {
   rating: number;
   comment: string;
   isVerifiedBuyer?: boolean;
+  status?: ReviewStatus;
   createdAt?: string;
 }
 
