@@ -4,35 +4,30 @@ import { useEffect } from "react";
 import { useAppDispatch } from "@/redux/hooks";
 import { setCredentials, logout } from "@/redux/slices/authSlice";
 import { authService } from "@/services/authService";
+import { getClientCookie, setAuthCookies } from "@/utils/cookie";
 
 /**
- * 🔒 Pure HTTP-Only Auth Initializer & Client Migration
+ * 🔒 Pure Auth Initializer & Session Synchronizer
  *
- * 1. Purges legacy tokens and session credentials from localStorage/sessionStorage.
- * 2. Authenticates current session via GET /auth/me against server httpOnly cookies.
- * 3. Enforces zero client-accessible token storage across the entire application lifecycle.
+ * 1. Authenticates current session via GET /auth/me against server session & cookies.
+ * 2. Synchronizes Redux auth state with active session credentials.
  */
 export default function AuthInitializer() {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    // 🛡️ Migration: Purge legacy token keys from client storage
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("urban_nursery_token");
-      localStorage.removeItem("planto_token");
-      sessionStorage.removeItem("token");
-      sessionStorage.removeItem("authToken");
-    }
-
-    // Validate active session against server-managed httpOnly cookie
+    // Validate active session against server
     authService
       .getMe()
       .then((res: any) => {
         const user = res?.user || res?.data?.user;
+        const token = res?.token || res?.data?.token || getClientCookie("token");
+
         if (user) {
-          dispatch(setCredentials({ user }));
+          if (token) {
+            setAuthCookies(token, user.role);
+          }
+          dispatch(setCredentials({ user, token: token || undefined }));
         }
       })
       .catch(() => {

@@ -16,9 +16,6 @@ const ENABLE_CUSTOM_DOMAIN_REDIRECT = process.env.ENABLE_CUSTOM_DOMAIN_REDIRECT 
  * across all environment permutations (HTTP dev and HTTPS production).
  */
 function clearAuthCookies(response: NextResponse): NextResponse {
-  response.cookies.delete("token");
-  response.cookies.delete("role");
-
   const isProd = process.env.NODE_ENV === "production";
   const cookieOptions = {
     path: "/",
@@ -26,13 +23,68 @@ function clearAuthCookies(response: NextResponse): NextResponse {
     expires: new Date(0),
     sameSite: "lax" as const,
     secure: isProd,
-    httpOnly: true,
   };
 
+  // Delete primary and fallback cookie keys
+  response.cookies.delete("token");
+  response.cookies.delete("role");
+  response.cookies.delete("planto_token");
+  response.cookies.delete("planto_role");
+
+  // Force overwrite with expired header
   response.cookies.set("token", "", cookieOptions);
-  response.cookies.set("role", "", { ...cookieOptions, httpOnly: false });
+  response.cookies.set("role", "", cookieOptions);
+  response.cookies.set("planto_token", "", cookieOptions);
+  response.cookies.set("planto_role", "", cookieOptions);
 
   return response;
+}
+
+interface DecodedTokenPayload {
+  role?: string;
+  id?: string;
+  exp?: number;
+}
+
+/**
+ * Safe, lightweight JWT payload extractor for Next.js Edge Runtime.
+ * Decodes header.payload.signature using standard atob without node dependencies.
+ * Automatically validates expiry timestamp (exp).
+ */
+function extractUserFromJwt(jwt: string): DecodedTokenPayload | null {
+  try {
+    const parts = jwt.split(".");
+    if (parts.length !== 3) return null;
+
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    const payload = JSON.parse(jsonPayload);
+
+    // Validate expiration
+    if (payload.exp && typeof payload.exp === "number") {
+      const nowInSeconds = Math.floor(Date.now() / 1000);
+      if (nowInSeconds >= payload.exp) {
+        return null; // Expired token
+      }
+    }
+
+    const role = payload.role || payload.user?.role;
+    const id = payload.id || payload._id || payload.user?.id || payload.user?._id;
+
+    return {
+      role: typeof role === "string" ? role.toLowerCase() : undefined,
+      id: typeof id === "string" ? id : undefined,
+      exp: payload.exp,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function middleware(request: NextRequest) {
@@ -97,21 +149,64 @@ export function middleware(request: NextRequest) {
   // ─────────────────────────────────────────────────────────────
   // 4. Authentication & Authorization Security Guards
   // ─────────────────────────────────────────────────────────────
-  const token = request.cookies.get("token")?.value?.trim() || null;
-  const userRole = request.cookies.get("role")?.value?.trim() || null;
+  // Standardized cookie extraction: supports primary and fallback cookie keys
+  const rawToken =
+    request.cookies.get("token")?.value?.trim() ||
+    request.cookies.get("planto_token")?.value?.trim() ||
+    null;
+
+  const rawRole =
+    request.cookies.get("role")?.value?.trim()?.toLowerCase() ||
+    request.cookies.get("planto_role")?.value?.trim()?.toLowerCase() ||
+    null;
+
+  // Extract JWT claims and verify signature structure + expiration
+  const jwtPayload = rawToken ? extractUserFromJwt(rawToken) : null;
+  const isTokenValid = Boolean(rawToken && jwtPayload);
+  const token = isTokenValid ? rawToken : null;
+  const userRole = jwtPayload?.role || rawRole || null;
+
   const isAuthPage = pathname === "/login" || pathname === "/register";
 
-  // Guard Auth Pages (/login, /register)
+  // ─────────────────────────────────────────────────────────────
+  // A. Guard Auth Pages (/login, /register)
+  // ─────────────────────────────────────────────────────────────
   if (isAuthPage) {
     const hasExpiredParam = searchParams.has("expired");
-    const hasErrorParam = searchParams.has("error");
+    const errorParam = searchParams.get("error");
+    const isUnauthorizedError = errorParam === "unauthorized" || errorParam === "session_expired";
 
-    if (hasExpiredParam || hasErrorParam) {
+    // Expired or unauthorized: clean any stale cookies
+    if (hasExpiredParam || isUnauthorizedError) {
       const response = NextResponse.next();
       return clearAuthCookies(response);
     }
 
+    // If authenticated user visits login/register, intelligently redirect them
     if (token && userRole) {
+      const callbackUrl = searchParams.get("callbackUrl") || searchParams.get("redirect");
+      if (
+        callbackUrl &&
+        callbackUrl.startsWith("/") &&
+        !callbackUrl.startsWith("//") &&
+        !callbackUrl.toLowerCase().includes("javascript:")
+      ) {
+        // Enforce role compatibility on callbackUrl
+        const isCallbackAdmin = callbackUrl.startsWith("/admin");
+        const isCallbackNursery = callbackUrl.startsWith("/nursery");
+
+        if (isCallbackAdmin && userRole === "admin") {
+          return NextResponse.redirect(new URL(callbackUrl, request.url));
+        }
+        if (isCallbackNursery && userRole === "nursery") {
+          return NextResponse.redirect(new URL(callbackUrl, request.url));
+        }
+        if (!isCallbackAdmin && !isCallbackNursery) {
+          return NextResponse.redirect(new URL(callbackUrl, request.url));
+        }
+      }
+
+      // Default role portal redirect
       if (userRole === "admin") {
         return NextResponse.redirect(new URL("/admin", request.url));
       }
@@ -121,7 +216,8 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/", request.url));
     }
 
-    if (token || userRole) {
+    // If token exists in cookies but failed JWT validation (expired/corrupted)
+    if (rawToken && !isTokenValid) {
       const response = NextResponse.next();
       return clearAuthCookies(response);
     }
@@ -129,31 +225,57 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Protected Super Admin Routes (/admin)
+  // ─────────────────────────────────────────────────────────────
+  // B. Protected Super Admin Routes (/admin & /admin/*)
+  // ─────────────────────────────────────────────────────────────
   if (pathname.startsWith("/admin")) {
-    if (!token || !userRole) {
-      const redirectUrl = new URL("/login?error=unauthorized", request.url);
-      const response = NextResponse.redirect(redirectUrl);
+    if (!token) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("error", "unauthorized");
+      loginUrl.searchParams.set("callbackUrl", pathname + search);
+      const response = NextResponse.redirect(loginUrl);
       return clearAuthCookies(response);
     }
 
+    // Role verification
     if (userRole !== "admin") {
-      return NextResponse.redirect(new URL("/", request.url));
+      // Graceful fallback: Nursery vendors get redirected to their portal
+      if (userRole === "nursery") {
+        return NextResponse.redirect(new URL("/nursery", request.url));
+      }
+      // Non-admin / non-nursery users redirected to login with forbidden error
+      const forbiddenUrl = new URL("/login", request.url);
+      forbiddenUrl.searchParams.set("error", "forbidden");
+      forbiddenUrl.searchParams.set("callbackUrl", pathname + search);
+      return NextResponse.redirect(forbiddenUrl);
     }
 
     return NextResponse.next();
   }
 
-  // Protected Nursery Routes (/nursery)
+  // ─────────────────────────────────────────────────────────────
+  // C. Protected Nursery Merchant Routes (/nursery & /nursery/*)
+  // ─────────────────────────────────────────────────────────────
   if (pathname.startsWith("/nursery")) {
-    if (!token || !userRole) {
-      const redirectUrl = new URL("/login?error=unauthorized", request.url);
-      const response = NextResponse.redirect(redirectUrl);
+    if (!token) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("error", "unauthorized");
+      loginUrl.searchParams.set("callbackUrl", pathname + search);
+      const response = NextResponse.redirect(loginUrl);
       return clearAuthCookies(response);
     }
 
+    // Role verification
     if (userRole !== "nursery") {
-      return NextResponse.redirect(new URL("/", request.url));
+      // Graceful fallback: Admins visiting nursery routes get redirected to admin portal
+      if (userRole === "admin") {
+        return NextResponse.redirect(new URL("/admin", request.url));
+      }
+      // Non-nursery customers get redirected to login with forbidden error
+      const forbiddenUrl = new URL("/login", request.url);
+      forbiddenUrl.searchParams.set("error", "forbidden");
+      forbiddenUrl.searchParams.set("callbackUrl", pathname + search);
+      return NextResponse.redirect(forbiddenUrl);
     }
 
     return NextResponse.next();
@@ -202,6 +324,9 @@ export const config = {
      * - favicon.ico (favicon file)
      * - images (public images)
      * - fonts (public fonts)
+     *
+     * Guards /admin/:path*, /nursery/:path*, /login, /register, and root-level routes.
+     * Note: (customer) is a route group, which produces root-anchored paths (e.g. /cart, /checkout).
      */
     "/((?!_next/static|_next/image|favicon.ico|images/|fonts/).*)",
   ],

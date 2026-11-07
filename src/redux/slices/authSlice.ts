@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { clearClientAuthCookies } from "@/utils/cookie";
 
 export interface UserPayload {
   id?: string;
@@ -49,6 +50,7 @@ const authSlice = createSlice({
       state.isLoading = false;
 
       if (typeof window !== "undefined") {
+        clearClientAuthCookies();
         localStorage.removeItem("token");
         localStorage.removeItem("authToken");
         localStorage.removeItem("urban_nursery_token");

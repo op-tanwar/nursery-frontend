@@ -310,24 +310,35 @@ export async function syncCartOnAuthSuccess(dispatch: any): Promise<void> {
 }
 
 /**
- * Safe redirect resolver respecting redirect query params (e.g. ?redirect=/checkout).
- * Prevents open redirects by enforcing relative root-anchored paths.
+ * Safe redirect resolver respecting callbackUrl and redirect query params (e.g. ?callbackUrl=/admin or ?redirect=/checkout).
+ * Prevents open redirects by enforcing relative root-anchored paths and role capability verification.
  */
 export function getPostAuthRedirectUrl(userRole: string): string {
+  const normalizedRole = (userRole || "").toLowerCase().trim();
+
   if (typeof window !== "undefined") {
     const params = new URLSearchParams(window.location.search);
-    const redirectParam = params.get("redirect");
+    const redirectParam = params.get("callbackUrl") || params.get("redirect");
+
     if (
       redirectParam &&
       redirectParam.startsWith("/") &&
       !redirectParam.startsWith("//") &&
       !redirectParam.toLowerCase().includes("javascript:")
     ) {
+      // Role capability guard: prevent redirecting users into portals they cannot access
+      if (redirectParam.startsWith("/admin") && normalizedRole !== "admin") {
+        return normalizedRole === "nursery" ? "/nursery" : "/";
+      }
+      if (redirectParam.startsWith("/nursery") && normalizedRole !== "nursery") {
+        return normalizedRole === "admin" ? "/admin" : "/";
+      }
+
       return redirectParam;
     }
   }
 
-  if (userRole === "admin") return "/admin";
-  if (userRole === "nursery") return "/nursery";
+  if (normalizedRole === "admin") return "/admin";
+  if (normalizedRole === "nursery") return "/nursery";
   return "/";
 }

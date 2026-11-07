@@ -7,6 +7,7 @@ import { useAppDispatch } from "@/redux/hooks";
 import { setCredentials } from "@/redux/slices/authSlice";
 import { authService } from "@/services/authService";
 import { syncCartOnAuthSuccess, getPostAuthRedirectUrl } from "@/utils/guestCart";
+import { setAuthCookies } from "@/utils/cookie";
 import Spinner from "@/components/ui/Spinner";
 
 interface SocialLoginButtonsProps {
@@ -142,14 +143,19 @@ export default function SocialLoginButtons({
 
     const { user } = resData;
     const userRole = user.role || "user";
+    const token = resData.token || resData.accessToken || resData.data?.token || resData.authToken;
 
-    // 1. Redux State Store (Pure state, zero client-persisted JWT)
-    dispatch(setCredentials({ user }));
+    // 1. Explicitly persist auth cookies so Next.js Edge Middleware can authenticate route transitions
+    if (token) {
+      setAuthCookies(token, userRole);
+    }
+
+    // 2. Redux State Store
+    dispatch(setCredentials({ user, token }));
 
     toast.success(`Welcome, ${user.name || "friend"}!`, { id: "social-auth-toast" });
 
-    // 2. Automatic Post-Login Cart Sync & Preserved Redirection
-    // Auth cookies are set exclusively as httpOnly by the backend
+    // 3. Automatic Post-Login Cart Sync & Preserved Redirection
     const targetUrl = getPostAuthRedirectUrl(userRole);
     syncCartOnAuthSuccess(dispatch).finally(() => {
       setTimeout(() => {

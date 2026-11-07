@@ -10,6 +10,7 @@ import { setAuthLoading, setCredentials } from "@/redux/slices/authSlice";
 import { authService } from "@/services/authService";
 import { registerSchema, RegisterInput } from "@/utils/validations";
 import { syncCartOnAuthSuccess, getPostAuthRedirectUrl } from "@/utils/guestCart";
+import { setAuthCookies } from "@/utils/cookie";
 import Spinner from "@/components/ui/Spinner";
 import SocialLoginButtons from "./SocialLoginButtons";
 
@@ -37,12 +38,17 @@ export default function SignUpView() {
 
         if (resData?.user) {
           const userRole = resData.user.role;
+          const token = resData.token || resData.accessToken || resData.data?.token || response?.token;
 
-          // 1. State Store Sync (Pure state, zero client-persisted JWT)
-          dispatch(setCredentials({ user: resData.user }));
+          // 1. Explicitly persist auth cookies so Next.js Edge Middleware can authenticate route transitions
+          if (token) {
+            setAuthCookies(token, userRole);
+          }
 
-          // 2. Automatic Post-Registration Cart Sync & Preserved Redirection
-          // Auth cookies are set exclusively as httpOnly by the backend
+          // 2. Central Redux state update
+          dispatch(setCredentials({ user: resData.user, token }));
+
+          // 3. Automatic Post-Registration Cart Sync & Preserved Redirection
           const targetUrl = getPostAuthRedirectUrl(userRole);
           syncCartOnAuthSuccess(dispatch).finally(() => {
             setTimeout(() => {

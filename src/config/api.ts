@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearClientAuthCookies, getClientCookie } from "@/utils/cookie";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://nursery-backend-2rg3.onrender.com/api/v1";
 
@@ -32,17 +33,25 @@ export function purgeClientAuthData(): void {
       localStorage.removeItem(key);
       sessionStorage.removeItem(key);
     }
+    clearClientAuthCookies();
   } catch (err) {
     console.warn("Failed to clear client storage keys:", err);
   }
 }
 
 /* ─────────────────────────────────────────────────────────
-    🚀 REQUEST INTERCEPTOR (Pure HTTP-Only Cookies & Upload Config)
+    🚀 REQUEST INTERCEPTOR (Dual Cookie & Authorization Header Defense)
 ───────────────────────────────────────────────────────── */
 api.interceptors.request.use(
   (config) => {
-    // Zero JS-readable JWT token injection: authentication relies exclusively on secure httpOnly cookies
+    // Provide Authorization Bearer header fallback for cross-origin reliability
+    if (typeof document !== "undefined") {
+      const token = getClientCookie("token") || getClientCookie("planto_token");
+      if (token && !config.headers["Authorization"]) {
+        config.headers["Authorization"] = `Bearer ${token}`;
+      }
+    }
+
     if (config.data instanceof FormData) {
       if (config.headers) {
         delete config.headers["Content-Type"];

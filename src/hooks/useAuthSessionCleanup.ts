@@ -10,6 +10,7 @@ import { purgeClientAuthData } from "@/config/api";
 export interface SessionCleanupResult {
   isSessionExpired: boolean;
   isUnauthorized: boolean;
+  isForbidden?: boolean;
 }
 
 /**
@@ -26,13 +27,29 @@ export function useAuthSessionCleanup(): SessionCleanupResult {
   const isSessionExpired = searchParams?.get("expired") === "true";
   const errorParam = searchParams?.get("error");
   const isUnauthorized = errorParam === "unauthorized" || errorParam === "session_expired";
+  const isForbidden = errorParam === "forbidden";
 
   useEffect(() => {
     // Prevent double execution in React StrictMode
     if (hasExecutedRef.current) return;
-    if (!isSessionExpired && !isUnauthorized) return;
+    if (!isSessionExpired && !isUnauthorized && !isForbidden) return;
 
     hasExecutedRef.current = true;
+
+    // Handle forbidden (role mismatch): keep current session intact, notify user
+    if (isForbidden) {
+      toast.error("Access denied: You do not have permissions for that portal.", {
+        id: "session-forbidden-alert",
+      });
+
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("error");
+        const cleanUrl = url.pathname + (url.search ? url.search : "");
+        window.history.replaceState(null, "", cleanUrl);
+      }
+      return;
+    }
 
     // 1. Wipe Redux store auth state
     dispatch(logout());
@@ -59,10 +76,11 @@ export function useAuthSessionCleanup(): SessionCleanupResult {
       const cleanUrl = url.pathname + (url.search ? url.search : "");
       window.history.replaceState(null, "", cleanUrl);
     }
-  }, [isSessionExpired, isUnauthorized, dispatch]);
+  }, [isSessionExpired, isUnauthorized, isForbidden, dispatch]);
 
   return {
     isSessionExpired,
     isUnauthorized,
+    isForbidden,
   };
 }
