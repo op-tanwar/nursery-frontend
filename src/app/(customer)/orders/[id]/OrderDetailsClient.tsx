@@ -24,6 +24,7 @@ import {
   HelpCircle,
   Sparkles,
   RotateCcw,
+  Lock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { orderService } from "@/services/orderService";
@@ -38,6 +39,8 @@ interface PageProps {
   id?: string;
   orderId?: string;
   initialOrder?: any | null;
+  isUnauthorizedInitial?: boolean;
+  isForbiddenInitial?: boolean;
   params?: Promise<{ id?: string; orderId?: string }>;
 }
 
@@ -47,6 +50,8 @@ export default function OrderDetailsClient({
   id: propId,
   orderId: propOrderId,
   initialOrder,
+  isUnauthorizedInitial = false,
+  isForbiddenInitial = false,
   params,
 }: PageProps) {
   const urlParams = useParams<{ id?: string; orderId?: string }>();
@@ -63,7 +68,11 @@ export default function OrderDetailsClient({
   const { user } = useAppSelector((state) => state.auth || { user: null });
 
   const [order, setOrder] = useState<any | null>(initialOrder || null);
-  const [isLoading, setIsLoading] = useState<boolean>(!initialOrder);
+  const [isUnauthorized, setIsUnauthorized] = useState<boolean>(Boolean(isUnauthorizedInitial));
+  const [isForbidden, setIsForbidden] = useState<boolean>(Boolean(isForbiddenInitial));
+  const [isLoading, setIsLoading] = useState<boolean>(
+    !initialOrder && !isUnauthorizedInitial && !isForbiddenInitial
+  );
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
@@ -106,6 +115,8 @@ export default function OrderDetailsClient({
       const res = await orderService.getOrderById(orderId);
       if (res && res.order) {
         setOrder(res.order);
+        setIsUnauthorized(false);
+        setIsForbidden(false);
 
         // Fetch any existing return/replacement requests for this order
         try {
@@ -114,7 +125,7 @@ export default function OrderDetailsClient({
             const statusMap: Record<string, string> = {};
             const dataMap: Record<string, any> = {};
             reqRes.requests.forEach((r: any) => {
-              if (r.itemId) {
+              if (r?.itemId) {
                 const key = String(r.itemId);
                 statusMap[key] = r.status || "Pending";
                 dataMap[key] = {
@@ -134,9 +145,18 @@ export default function OrderDetailsClient({
         setError("Order details could not be located in database.");
       }
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message || err?.message || "Failed to load order information.";
-      setError(msg);
+      const statusCode = err?.response?.status || err?.status;
+      if (statusCode === 401) {
+        setIsUnauthorized(true);
+      } else if (statusCode === 403) {
+        setIsForbidden(true);
+      } else if (statusCode === 404) {
+        setError(`Order #${orderId} was not found in our system.`);
+      } else {
+        const msg =
+          err?.response?.data?.message || err?.message || "Failed to load order information.";
+        setError(msg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -146,7 +166,7 @@ export default function OrderDetailsClient({
     if (order && (order._id === orderId || order.id === orderId)) {
       return;
     }
-    if (orderId) {
+    if (orderId && !initialOrder && !isUnauthorizedInitial && !isForbiddenInitial) {
       fetchOrderDetails();
     }
   }, [orderId]);
@@ -190,6 +210,7 @@ export default function OrderDetailsClient({
   };
 
   const openReviewModal = (item: any) => {
+    if (!item) return;
     const productObj =
       typeof item?.product === "object" && item?.product !== null
         ? item.product
@@ -271,6 +292,82 @@ export default function OrderDetailsClient({
           <div className="space-y-6">
             <div className="h-56 bg-white border border-slate-100 rounded-3xl p-6" />
             <div className="h-56 bg-white border border-slate-100 rounded-3xl p-6" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 🔒 UNAUTHORIZED FALLBACK STATE
+  if (isUnauthorized) {
+    return (
+      <div className="max-w-3xl mx-auto w-full px-4 py-20 text-center space-y-6 antialiased">
+        <div className="bg-amber-50/80 border border-amber-200 rounded-3xl p-8 sm:p-14 space-y-5 shadow-xs">
+          <div className="w-16 h-16 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center mx-auto ring-8 ring-amber-50/50">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+              Sign In to View Order
+            </h2>
+            <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+              Order tracking and receipt details are private. Please sign in to the account used to place this order.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
+            <Link
+              href={`/login?callbackUrl=${encodeURIComponent(`/orders/${orderId}`)}`}
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2 no-underline"
+            >
+              Sign In with Account
+            </Link>
+            <Link
+              href="/orders/me"
+              className="px-5 py-3 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-50 transition shadow-xs inline-flex items-center gap-2 no-underline"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to My Orders</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 🚫 FORBIDDEN FALLBACK STATE
+  if (isForbidden) {
+    return (
+      <div className="max-w-3xl mx-auto w-full px-4 py-20 text-center space-y-6 antialiased">
+        <div className="bg-rose-50/80 border border-rose-200 rounded-3xl p-8 sm:p-14 space-y-5 shadow-xs">
+          <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto ring-8 ring-rose-50/50">
+            <AlertCircle className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+              Access Restricted
+            </h2>
+            <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+              You are signed in, but this order is associated with a different customer account.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
+            <Link
+              href="/orders/me"
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2 no-underline"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>View My Orders</span>
+            </Link>
+            <Link
+              href="/shop"
+              className="px-5 py-3 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-50 transition shadow-xs inline-flex items-center gap-2 no-underline"
+            >
+              Continue Shopping
+            </Link>
           </div>
         </div>
       </div>
@@ -364,7 +461,8 @@ export default function OrderDetailsClient({
     > = {};
 
     safeOrderItems.forEach((item: any) => {
-      const cat = item?.taxCategory || item?.itemModel || item?.category || "Plants";
+      if (!item) return;
+      const cat = item?.taxCategory || item?.itemModel || item?.category || item?.product?.category || "Plants";
       const rate = Number(item?.taxRatePercentage ?? (item?.taxAmount ? 18 : 0));
       const taxAmt = Number(item?.taxAmount ?? 0);
       const price = Number(item?.price ?? item?.product?.price ?? 0);
@@ -546,7 +644,8 @@ export default function OrderDetailsClient({
                   No line items found in this order record.
                 </p>
               ) : (
-                (order?.items || order?.orderItems || safeOrderItems)?.map((item: any, idx: number) => {
+                safeOrderItems.map((item: any, idx: number) => {
+                  if (!item) return null;
                   const productObj =
                     typeof item?.product === "object" && item?.product !== null
                       ? item.product

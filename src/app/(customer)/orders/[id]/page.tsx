@@ -7,7 +7,7 @@ export const fetchCache = "force-no-store";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { PackageX, ArrowLeft, ShoppingBag } from "lucide-react";
 import OrderDetailsClient from "./OrderDetailsClient";
 
@@ -15,7 +15,7 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-// ─── Candidate API Base URLs Resolver ─────────────────────────────────────────
+// ─── Resolve Clean API URL for Server-Side Data Fetching ─────────────────────
 function getCandidateApiUrls(): string[] {
   const endpoints: string[] = [];
   const add = (url?: string | null) => {
@@ -32,8 +32,12 @@ function getCandidateApiUrls(): string[] {
   add(process.env.INTERNAL_API_URL);
   add(process.env.NEXT_PUBLIC_API_URL);
   add("https://nursery-backend-2rg3.onrender.com/api/v1");
-  add("http://localhost:4000/api/v1");
-  add("http://127.0.0.1:4000/api/v1");
+
+  // Only attempt local endpoints in explicit development environment
+  if (process.env.NODE_ENV === "development") {
+    add("http://localhost:4000/api/v1");
+    add("http://127.0.0.1:4000/api/v1");
+  }
 
   return endpoints;
 }
@@ -43,8 +47,9 @@ export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   try {
-    const { id } = await params;
-    const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id || "");
+    const { id: rawId } = await params;
+    const id = String(rawId || "").trim();
+    const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id);
     if (!isValidObjectId) {
       return {
         title: "Order Not Found | Urban Nursery India",
@@ -70,30 +75,49 @@ export async function generateMetadata({
 }
 
 // ─── 2. RSC Dynamic Data Fetching directly against live MongoDB backend ───────
-async function fetchOrderServer(id: string): Promise<{ status: number; order: any | null; isExplicitNotFound: boolean }> {
-  const candidates = getCandidateApiUrls();
-  const reqHeaders: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
+async function fetchOrderServer(id: string): Promise<{
+  status: number;
+  order: any | null;
+  isExplicitNotFound: boolean;
+  isUnauthorized?: boolean;
+  isForbidden?: boolean;
+}> {
+  // Read auth token from server cookie store
+  let token: string | null = null;
   try {
     const cookieStore = await cookies();
-    const headersList = await headers();
-    const cookieStr = cookieStore.toString();
-    if (cookieStr) reqHeaders["Cookie"] = cookieStr;
-    const authHeader = headersList.get("authorization");
-    if (authHeader) reqHeaders["Authorization"] = authHeader;
+    token =
+      cookieStore.get("token")?.value?.trim() ||
+      cookieStore.get("planto_token")?.value?.trim() ||
+      null;
   } catch {
-    // Safe non-blocking execution if cookies/headers cannot be resolved
+    // Safe fallback if cookies() cannot be accessed
   }
 
+  // If no auth token is present on the server, mark unauthorized immediately
+  if (!token) {
+    return {
+      status: 401,
+      order: null,
+      isExplicitNotFound: false,
+      isUnauthorized: true,
+    };
+  }
+
+  const reqHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+    Cookie: `token=${token}; planto_token=${token}`,
+  };
+
+  const candidates = getCandidateApiUrls();
   let explicit404Encountered = false;
 
   for (const baseUrl of candidates) {
     const targetUrl = `${baseUrl}/orders/single/${id}`;
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
 
       const res = await fetch(targetUrl, {
         headers: reqHeaders,
@@ -109,6 +133,10 @@ async function fetchOrderServer(id: string): Promise<{ status: number; order: an
         }
       } else if (res.status === 404) {
         explicit404Encountered = true;
+      } else if (res.status === 401) {
+        return { status: 401, order: null, isExplicitNotFound: false, isUnauthorized: true };
+      } else if (res.status === 403) {
+        return { status: 403, order: null, isExplicitNotFound: false, isForbidden: true };
       }
     } catch {
       // Candidate unreachable or timed out, attempt next endpoint
@@ -169,10 +197,9 @@ function FriendlyOrderNotFoundUI({
 // ─── 4. Main Next.js App Router Page Shell ───────────────────────────────────
 export default async function OrderDetailPage({ params }: PageProps) {
   try {
-    // Next.js 15 Async Route Params properly awaited
-    const resolvedParams = await params;
-    const rawId = resolvedParams?.id || (resolvedParams as any)?.orderId || "";
-    const id = String(rawId).trim();
+    // Next.js 15/16 Async Route Params properly awaited
+    const { id: rawId } = await params;
+    const id = String(rawId || "").trim();
 
     // Validate 24-character hexadecimal ObjectId before database querying
     const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(id);
@@ -181,8 +208,8 @@ export default async function OrderDetailPage({ params }: PageProps) {
       notFound();
     }
 
-    // Dynamic live server-side data fetching directly from MongoDB
-    const { order, isExplicitNotFound } = await fetchOrderServer(id);
+    // Dynamic live server-side data fetching directly with auth headers
+    const { order, isExplicitNotFound, isUnauthorized, isForbidden } = await fetchOrderServer(id);
 
     // If order is explicitly confirmed missing by the database, serve true HTTP 404
     if (isExplicitNotFound) {
@@ -192,13 +219,18 @@ export default async function OrderDetailPage({ params }: PageProps) {
     return (
       <OrderDetailsClient
         id={id}
-        orderId={id}
         initialOrder={order}
+        isUnauthorizedInitial={isUnauthorized}
+        isForbiddenInitial={isForbidden}
       />
     );
   } catch (error: any) {
     // 🛡️ Ensure true HTTP 404 isn't swallowed into a soft 200 OK
-    if (error?.digest === "NEXT_NOT_FOUND" || error?.message === "NEXT_NOT_FOUND" || error?.digest?.startsWith?.("NEXT_NOT_FOUND")) {
+    if (
+      error?.digest === "NEXT_NOT_FOUND" ||
+      error?.message === "NEXT_NOT_FOUND" ||
+      error?.digest?.startsWith?.("NEXT_NOT_FOUND")
+    ) {
       throw error;
     }
     console.error("[RSC Order Page] Fatal rendering exception caught:", error?.message || error);
