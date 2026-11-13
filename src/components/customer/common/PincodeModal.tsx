@@ -46,6 +46,9 @@ export default function PincodeModal({
       return;
     }
     localStorage.setItem("hyperlocal_pincode", pincode);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("pincode-changed", { detail: pincode }));
+    }
     setShowPincodeModal?.(false);
     setError("");
     window.location.reload();

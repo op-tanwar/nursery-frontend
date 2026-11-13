@@ -102,6 +102,26 @@ export const productService = {
   },
 
   /**
+   * 🌟 Fetch featured / best-selling products (supports optional category and delivery pincode)
+   */
+  getFeaturedProducts: async (
+    filters: { category?: string; pincode?: string; limit?: number } = {}
+  ): Promise<any> => {
+    const params = new URLSearchParams();
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        params.append(key, String(value));
+      }
+    });
+
+    const queryString = params.toString();
+    const endpoint = queryString ? `/products/featured?${queryString}` : "/products/featured";
+    const res: any = await api.get(endpoint);
+    return res?.data ?? res;
+  },
+
+  /**
    * Fetch single product by MongoDB ObjectId OR SEO-friendly slug.
    * Backend automatically resolves 301 redirects for historic/changed slugs.
    */

@@ -316,8 +316,8 @@ export function mapRawPotToShopItem(product: any): ShopItemType {
 export async function getFeaturedPlantsServer(limit = 4): Promise<ShopItemType[]> {
   const fetch$ = (async () => {
     try {
-      // ⚡ PERF: Ask API for only `limit` rows instead of fetch-all-then-slice
-      const url = `${API_BASE_URL}/plants/allPlants?limit=${limit}`;
+      // ⚡ PERF: Query unified best-selling featured endpoint with ISR caching
+      const url = `${API_BASE_URL}/products/featured?category=plants&limit=${limit}`;
       // ⚡ PERF: 60s ISR caching with background revalidation
       const data = await fetchJson(url, null, 60);
 
@@ -357,8 +357,8 @@ export async function getFeaturedPlantsServer(limit = 4): Promise<ShopItemType[]
 export async function getFeaturedPotsServer(limit = 4): Promise<ShopItemType[]> {
   const fetch$ = (async () => {
     try {
-      // ⚡ PERF: Ask API for only `limit` rows instead of fetch-all-then-slice
-      const url = `${API_BASE_URL}/pots/allPots?limit=${limit}`;
+      // ⚡ PERF: Query unified best-selling featured endpoint with ISR caching
+      const url = `${API_BASE_URL}/products/featured?category=pots&limit=${limit}`;
       // ⚡ PERF: 60s ISR caching with background revalidation
       const data = await fetchJson(url, null, 60);
 

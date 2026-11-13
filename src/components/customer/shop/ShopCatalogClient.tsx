@@ -180,6 +180,9 @@ export default function ShopCatalogClient({
 
   const handleClearPincode = () => {
     localStorage.removeItem("hyperlocal_pincode");
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("pincode-changed", { detail: null }));
+    }
     setUserPincode(null);
     window.location.reload();
   };
