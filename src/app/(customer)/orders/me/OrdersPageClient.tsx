@@ -33,7 +33,6 @@ export default function MyOrdersPage() {
       dispatch(setOrderLoading(true));
       try {
         const response = await orderService.getMyOrders() as any;
-        console.log("Success Response Data:", response);
 
         let ordersPayload = null;
 
@@ -51,8 +50,6 @@ export default function MyOrdersPage() {
         }
 
       } catch (err: any) {
-        console.log("Caught Error Block Context:", err);
-
         let backupPayload = null;
 
         if (err?.orders && Array.isArray(err.orders)) {
@@ -64,7 +61,6 @@ export default function MyOrdersPage() {
         }
 
         if (backupPayload) {
-          console.log("Recovered orders payload successfully from exception bounds.");
           dispatch(setMyOrdersData(backupPayload));
           hasFetched.current = true;
           return;

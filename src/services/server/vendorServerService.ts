@@ -24,8 +24,12 @@ function getCandidateApiUrls(): string[] {
   add(process.env.INTERNAL_API_URL);
   add(process.env.NEXT_PUBLIC_API_URL);
   add("https://nursery-backend-2rg3.onrender.com/api/v1");
-  add("http://localhost:4000/api/v1");
-  add("http://127.0.0.1:4000/api/v1");
+
+  // Only attempt local endpoints in explicit development environment
+  if (process.env.NODE_ENV === "development") {
+    add("http://localhost:4000/api/v1");
+    add("http://127.0.0.1:4000/api/v1");
+  }
 
   return endpoints;
 }
