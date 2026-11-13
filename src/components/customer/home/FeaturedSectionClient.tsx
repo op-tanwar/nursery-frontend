@@ -212,11 +212,11 @@ export default function FeaturedSectionClient({
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 sm:mb-10 gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                
-                  <span className="inline-flex items-center gap-1.5 text-[12px] sm:text-[13px] font-bold text-emerald-700 tracking-[0.06em] uppercase">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    {subtitle} • Bestsellers
-                  </span>
+
+                <span className="inline-flex items-center gap-1.5 text-[12px] sm:text-[13px] font-bold text-emerald-700 tracking-[0.06em] uppercase">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  {subtitle} • Bestsellers
+                </span>
               </div>
 
               <h2 className="text-[clamp(24px,3.5vw,38px)] font-black m-0 tracking-[-0.02em] text-slate-900 leading-tight">
@@ -226,16 +226,15 @@ export default function FeaturedSectionClient({
 
             <Link
               href={viewAllHref}
-              className="bg-white border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-600 hover:text-white py-2.5 px-5 sm:px-6 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 inline-flex items-center gap-2 shadow-xs no-underline"
+              className="bg-white border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-600 hover:text-white py-2.5 px-5 sm:px-6 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 hidden md:inline-flex items-center gap-2 shadow-xs no-underline "
             >
               <span>{viewAllText}</span>
-              <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
 
           {/* Loading Shimmer Grid */}
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-pulse">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
               {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
@@ -256,11 +255,22 @@ export default function FeaturedSectionClient({
             </div>
           ) : displayedItems.length > 0 ? (
             /* Product Cards Grid */
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {displayedItems.map((item, i) => (
-                <ShopItemCard key={item.id || item._id || i} item={item} index={i} />
-              ))}
+            <div >
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {displayedItems.map((item, i) => (
+                  <ShopItemCard key={item.id || item._id || i} item={item} index={i} />
+                ))}
+              </div>
+              <div className="flex justify-center items-center">
+                <Link
+                  href={viewAllHref}
+                  className="bg-white border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-600 hover:text-white py-2.5 px-5 sm:px-6 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 md:hidden mt-4 inline-flex items-center gap-2 shadow-xs no-underline "
+                >
+                  <span>{viewAllText}</span>
+                </Link>
+              </div>
             </div>
+
           ) : (
             /* Clean Empty State with Action CTA */
             <div className="text-center py-14 px-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs max-w-xl mx-auto space-y-4">
