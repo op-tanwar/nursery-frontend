@@ -212,25 +212,11 @@ export default function FeaturedSectionClient({
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 sm:mb-10 gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                {pincode ? (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300/80 shadow-xs">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
-                    <span>Popular near {pincode}</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowPincodeModal(true)}
-                      className="ml-1 text-[11px] text-emerald-700 hover:text-emerald-950 underline font-semibold cursor-pointer"
-                      title="Change delivery pincode"
-                    >
-                      Change
-                    </button>
-                  </div>
-                ) : (
+                
                   <span className="inline-flex items-center gap-1.5 text-[12px] sm:text-[13px] font-bold text-emerald-700 tracking-[0.06em] uppercase">
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                     {subtitle} • Bestsellers
                   </span>
-                )}
               </div>
 
               <h2 className="text-[clamp(24px,3.5vw,38px)] font-black m-0 tracking-[-0.02em] text-slate-900 leading-tight">
