@@ -173,6 +173,7 @@ export interface IProduct {
   };
   isPublished: boolean;
   isActive?: boolean;
+  isNurseryActive?: boolean;
   ratingsAverage: number;
   ratingsQuantity: number;
   ratings?: number;
