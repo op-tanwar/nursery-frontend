@@ -24,6 +24,7 @@ import paymentReducer from "./slices/paymentSlice";
 import dashboardReducer from "./slices/dashboardSlice";
 import blogReducer from "./slices/blogSlice";
 import vendorReducer from "./slices/vendorSlice";
+import uiReducer from "./slices/uiSlice";
 
 // 🌿 UNIFIED CATALOG REDUCER
 import productReducer from "./slices/productSlice";
@@ -45,6 +46,7 @@ const rootReducer = combineReducers({
   dashboard: dashboardReducer,
   blog: blogReducer,
   vendor: vendorReducer,
+  ui: uiReducer,
 });
 
 // 2. Persist Configuration Setup

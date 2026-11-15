@@ -13,7 +13,7 @@ import { wishlistService, cartService } from "@/services/cartWishlistService";
 import { authService } from "@/services/authService";
 import toast from "react-hot-toast";
 
-import PincodeModal from "@/components/customer/common/PincodeModal";
+import { openPincodeModal } from "@/redux/slices/uiSlice";
 import DesktopNav from "./DesktopNav";
 import UserDropdown from "./UserDropdown";
 import MobileNav from "./MobileNav";
@@ -25,7 +25,6 @@ export default function Navbar() {
   const [mobileShopOpen, setMobileShopOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [currentPincode, setCurrentPincode] = useState<string | null>(null);
-  const [showPincodeModal, setShowPincodeModal] = useState(false);
 
   const pathname = usePathname();
   const dispatch = useAppDispatch();
@@ -50,6 +49,16 @@ export default function Navbar() {
     if (savedPincode) {
       setCurrentPincode(savedPincode);
     }
+
+    const handlePincodeChanged = (e: any) => {
+      const pin = e?.detail !== undefined ? e.detail : localStorage.getItem("hyperlocal_pincode");
+      setCurrentPincode(pin || null);
+    };
+
+    window.addEventListener("pincode-changed", handlePincodeChanged);
+    return () => {
+      window.removeEventListener("pincode-changed", handlePincodeChanged);
+    };
   }, [dispatch, isAuthRoute]);
 
   useEffect(() => {
@@ -158,7 +167,7 @@ export default function Navbar() {
           <div className="flex items-center gap-2 sm:gap-4">
             <button
               type="button"
-              onClick={() => setShowPincodeModal(true)}
+              onClick={() => dispatch(openPincodeModal())}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 border border-emerald-200/80 text-emerald-800 hover:bg-emerald-100/70 transition-all cursor-pointer"
               title="Change Delivery Location"
             >
@@ -241,11 +250,6 @@ export default function Navbar() {
           handleLogout={handleLogout}
         />
       </nav>
-
-      <PincodeModal
-        showPincodeModal={showPincodeModal}
-        setShowPincodeModal={setShowPincodeModal}
-      />
     </>
   );
 }

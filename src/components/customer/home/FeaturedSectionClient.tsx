@@ -4,9 +4,10 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { MapPin, Sparkles, AlertCircle, ArrowRight } from "lucide-react";
 import ShopItemCard, { ShopItemType } from "@/components/customer/common/ShopItemCard";
-import PincodeModal from "@/components/customer/common/PincodeModal";
 import { productService } from "@/services/productService";
 import { determineProductTag } from "@/utils/productBadge";
+import { useAppDispatch } from "@/redux/hooks";
+import { openPincodeModal } from "@/redux/slices/uiSlice";
 
 interface FeaturedSectionClientProps {
   category: "plants" | "pots";
@@ -127,10 +128,10 @@ export default function FeaturedSectionClient({
   bgColor = "bg-[#f8fdf9]",
   initialItems,
 }: FeaturedSectionClientProps) {
+  const dispatch = useAppDispatch();
   const [items, setItems] = useState<ShopItemType[]>(initialItems || []);
   const [pincode, setPincode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [showPincodeModal, setShowPincodeModal] = useState<boolean>(false);
 
   // Fetch best-sellers for active pincode
   const fetchProductsForPincode = useCallback(
@@ -289,7 +290,7 @@ export default function FeaturedSectionClient({
               <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowPincodeModal(true)}
+                  onClick={() => dispatch(openPincodeModal())}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer"
                 >
                   Change Delivery Pincode
@@ -305,12 +306,6 @@ export default function FeaturedSectionClient({
           )}
         </div>
       </section>
-
-      {/* Pincode Selector Modal Instance */}
-      <PincodeModal
-        showPincodeModal={showPincodeModal}
-        setShowPincodeModal={setShowPincodeModal}
-      />
     </>
   );
 }
