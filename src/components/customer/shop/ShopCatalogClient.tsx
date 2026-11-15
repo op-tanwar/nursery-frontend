@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import ShopItemCard, { ShopItemType } from "@/components/customer/common/ShopItemCard";
 import { determineProductTag } from "@/utils/productBadge";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import PlantLoader from "@/components/customer/common/PlantLoader";
 import { productService } from "@/services/productService";
 import {
   setProductLoading,
@@ -13,18 +12,16 @@ import {
   setAllProductsData,
 } from "@/redux/slices/productSlice";
 
-const ITEMS_PER_PAGE = 12;
+// Redesigned UI Architecture Sub-components
+import ShopHeroHeader from "./ShopHeroHeader";
+import ShopCategoryChips, { ShopTabType } from "./ShopCategoryChips";
+import ShopFilterSidebar, { ShopFilterValues } from "./ShopFilterSidebar";
+import ShopMobileFilterDrawer from "./ShopMobileFilterDrawer";
+import ShopToolbar, { SortOption, ActiveFilterChip } from "./ShopToolbar";
+import { ProductGridSkeleton } from "./ProductCardSkeleton";
+import { RotateCcw, Sparkles } from "lucide-react";
 
-type ShopTabType =
-  | "All"
-  | "Plants"
-  | "Pots"
-  | "Accessories"
-  | "Gardening Tools"
-  | "Plant Care"
-  | "Seeds & Bulbs"
-  | "Plant Stands"
-  | "Artificial & Dried Plants";
+const ITEMS_PER_PAGE = 12;
 
 type ShopUrlType = ShopItemType["type"];
 
@@ -99,11 +96,13 @@ const FALLBACK_EMOJI: Record<ShopUrlType, string> = {
 export interface ShopCatalogClientProps {
   initialType?: string;
   initialCategory?: string;
+  hideHero?: boolean;
 }
 
 export default function ShopCatalogClient({
   initialType,
   initialCategory,
+  hideHero = false,
 }: ShopCatalogClientProps = {}) {
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
@@ -117,7 +116,7 @@ export default function ShopCatalogClient({
     error: productError,
   } = useAppSelector((state) => state.product);
 
-  // Navigation & UI Operational States
+  // ─── Filter & Navigation States ──────────────────────────────────────────
   const [activeType, setActiveType] = useState<ShopTabType>(() => {
     if (initialType && URL_TYPE_TO_TAB[initialType]) return URL_TYPE_TO_TAB[initialType];
     return "All";
@@ -125,12 +124,25 @@ export default function ShopCatalogClient({
   const [activeSubCategory, setActiveSubCategory] = useState<string>(() => initialCategory || "All");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [priceSort, setPriceSort] = useState<"default" | "lowToHigh" | "highToLow">("default");
+  const [priceSort, setPriceSort] = useState<SortOption>("default");
   const [selectedTag, setSelectedTag] = useState<string>("All Tags");
   const [currentPage, setCurrentPage] = useState(1);
   const [userPincode, setUserPincode] = useState<string | null>(null);
 
-  // Synchronize dynamic URL parameter modifications from Mega Menu & Hero clicks
+  // Enhanced D2C Filter Attributes
+  const [pricePreset, setPricePreset] = useState<ShopFilterValues["pricePreset"]>("all");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const [minRating, setMinRating] = useState(0);
+  const [careLevel, setCareLevel] = useState("All");
+
+  // Layout presentation states
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [desktopGridCols, setDesktopGridCols] = useState(3);
+  const [mobileGridCols, setMobileGridCols] = useState(2);
+
+  // Synchronize dynamic URL parameter modifications
   useEffect(() => {
     const urlType = searchParams.get("type") || initialType;
     const urlCategory = searchParams.get("category") || initialCategory;
@@ -159,12 +171,13 @@ export default function ShopCatalogClient({
     setCurrentPage(1);
   }, [searchParams, initialType, initialCategory]);
 
-  // Hydration-safe localStorage read (runs only on client after mount)
+  // Hydration-safe localStorage read
   useEffect(() => {
     const savedPincode = localStorage.getItem("hyperlocal_pincode");
     if (savedPincode) setUserPincode(savedPincode);
   }, []);
 
+  // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
@@ -172,31 +185,44 @@ export default function ShopCatalogClient({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const handleTypeChange = (type: ShopTabType) => {
+  const handleTypeChange = useCallback((type: ShopTabType) => {
     setActiveType(type);
     setActiveSubCategory("All");
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleClearPincode = () => {
+  const handleClearPincode = useCallback(() => {
     localStorage.removeItem("hyperlocal_pincode");
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("pincode-changed", { detail: null }));
     }
     setUserPincode(null);
     window.location.reload();
-  };
+  }, []);
 
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     setSearchQuery("");
     setDebouncedSearch("");
     setActiveSubCategory("All");
     setSelectedTag("All Tags");
     setPriceSort("default");
+    setPricePreset("all");
+    setMinPrice("");
+    setMaxPrice("");
+    setInStockOnly(false);
+    setMinRating(0);
+    setCareLevel("All");
     setCurrentPage(1);
-  };
+  }, []);
 
-  // Unified single catalog sync routine against /api/v1/products
+  const handleCustomPriceApply = useCallback((min: string, max: string) => {
+    setMinPrice(min);
+    setMaxPrice(max);
+    setPricePreset("custom");
+    setCurrentPage(1);
+  }, []);
+
+  // Catalog sync routine against /api/v1/products
   useEffect(() => {
     let isMounted = true;
 
@@ -250,6 +276,7 @@ export default function ShopCatalogClient({
     };
   }, [activeType, activeSubCategory, debouncedSearch, currentPage, dispatch, userPincode]);
 
+  // Product normalization mapping
   const mappedMarketItems = useMemo<ShopItemType[]>(() => {
     if (!Array.isArray(catalogProducts)) return [];
 
@@ -343,9 +370,11 @@ export default function ShopCatalogClient({
     });
   }, [catalogProducts]);
 
+  // Comprehensive client-side filtering & sorting
   const filteredAndSortedItems = useMemo(() => {
     let result = [...mappedMarketItems];
 
+    // Subcategory filter when activeType === "All"
     if (activeType === "All" && activeSubCategory !== "All") {
       result = result.filter(
         (item) =>
@@ -356,19 +385,80 @@ export default function ShopCatalogClient({
       );
     }
 
+    // Badge / Highlights filter
     if (selectedTag !== "All Tags") {
       result = result.filter((item) => item.tag === selectedTag);
     }
 
+    // Availability / In Stock filter
+    if (inStockOnly) {
+      result = result.filter((item) => (item.stock ?? 0) > 0);
+    }
+
+    // Minimum Rating filter
+    if (minRating > 0) {
+      result = result.filter((item) => item.rating >= minRating);
+    }
+
+    // Price preset & custom range filtering
+    if (pricePreset === "under-499") {
+      result = result.filter((item) => item.price < 500);
+    } else if (pricePreset === "500-999") {
+      result = result.filter((item) => item.price >= 500 && item.price <= 999);
+    } else if (pricePreset === "1000-1999") {
+      result = result.filter((item) => item.price >= 1000 && item.price <= 1999);
+    } else if (pricePreset === "2000-plus") {
+      result = result.filter((item) => item.price >= 2000);
+    } else if (pricePreset === "custom" || minPrice || maxPrice) {
+      const min = minPrice ? parseFloat(minPrice) : 0;
+      const max = maxPrice ? parseFloat(maxPrice) : Infinity;
+      result = result.filter((item) => item.price >= min && item.price <= max);
+    }
+
+    // Care level filter for live plants
+    if (careLevel !== "All") {
+      const lowerCare = careLevel.toLowerCase();
+      result = result.filter((item) => {
+        const itemStr = `${item.name} ${(item as any).subCategory || ""} ${Array.isArray(item.tags) ? item.tags.join(" ") : item.tags || ""}`.toLowerCase();
+        if (lowerCare === "easy") return itemStr.includes("easy") || itemStr.includes("snake") || itemStr.includes("zz") || itemStr.includes("succulent") || itemStr.includes("money");
+        if (lowerCare === "low light") return itemStr.includes("low") || itemStr.includes("shade") || itemStr.includes("indoor") || itemStr.includes("zz");
+        if (lowerCare === "indirect light") return itemStr.includes("indirect") || itemStr.includes("bright") || itemStr.includes("monstera") || itemStr.includes("palm");
+        if (lowerCare === "direct sun") return itemStr.includes("sun") || itemStr.includes("outdoor") || itemStr.includes("flowering") || itemStr.includes("hibiscus");
+        return true;
+      });
+    }
+
+    // Multi-criteria sorting
     if (priceSort === "lowToHigh") {
       result.sort((a, b) => a.price - b.price);
     } else if (priceSort === "highToLow") {
       result.sort((a, b) => b.price - a.price);
+    } else if (priceSort === "rating") {
+      result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (priceSort === "newest") {
+      result.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
     }
 
     return result;
-  }, [mappedMarketItems, selectedTag, priceSort, activeType, activeSubCategory]);
+  }, [
+    mappedMarketItems,
+    selectedTag,
+    inStockOnly,
+    minRating,
+    pricePreset,
+    minPrice,
+    maxPrice,
+    careLevel,
+    priceSort,
+    activeType,
+    activeSubCategory,
+  ]);
 
+  // Paginated visible items
   const visibleItems = useMemo(() => {
     if (activeType === "All") {
       const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -377,6 +467,7 @@ export default function ShopCatalogClient({
     return filteredAndSortedItems;
   }, [filteredAndSortedItems, activeType, currentPage]);
 
+  // Dynamic subcategories per category
   const availableSubCategories = useMemo(() => {
     if (activeType === "Plants") {
       return ["All", "Indoor Plants", "Outdoor Plants", "Succulents", "Medicinal Plants", "Flowering Plants", "Aromatic Plants", "Air Purifying Plants", "Foliage Plants", "Bonsai", "Terrarium Plants", "Pet-Friendly Plants"];
@@ -410,237 +501,405 @@ export default function ShopCatalogClient({
     return Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
   }, [activeType, filteredAndSortedItems.length, filteredCount, totalProducts]);
 
-  const isAnyFilterActive = useMemo(() => {
-    return searchQuery.trim() !== "" || activeSubCategory !== "All" || selectedTag !== "All Tags" || priceSort !== "default";
-  }, [searchQuery, activeSubCategory, selectedTag, priceSort]);
+  // Aggregate active filter counts & labels for chips
+  const activeChips = useMemo<ActiveFilterChip[]>(() => {
+    const chips: ActiveFilterChip[] = [];
 
+    if (searchQuery.trim()) {
+      chips.push({
+        id: "search",
+        label: `"${searchQuery}"`,
+        onRemove: () => {
+          setSearchQuery("");
+          setDebouncedSearch("");
+        },
+      });
+    }
+
+    if (activeType !== "All") {
+      chips.push({
+        id: "type",
+        label: activeType,
+        onRemove: () => handleTypeChange("All"),
+      });
+    }
+
+    if (activeSubCategory !== "All") {
+      chips.push({
+        id: "subCategory",
+        label: activeSubCategory,
+        onRemove: () => setActiveSubCategory("All"),
+      });
+    }
+
+    if (pricePreset !== "all") {
+      const labels: Record<string, string> = {
+        "under-499": "Under ₹499",
+        "500-999": "₹500 – ₹999",
+        "1000-1999": "₹1,000 – ₹1,999",
+        "2000-plus": "₹2,000+",
+        custom: `₹${minPrice || 0} – ₹${maxPrice || "any"}`,
+      };
+      chips.push({
+        id: "price",
+        label: labels[pricePreset] || "Price Filter",
+        onRemove: () => {
+          setPricePreset("all");
+          setMinPrice("");
+          setMaxPrice("");
+        },
+      });
+    }
+
+    if (inStockOnly) {
+      chips.push({
+        id: "stock",
+        label: "In Stock Only",
+        onRemove: () => setInStockOnly(false),
+      });
+    }
+
+    if (selectedTag !== "All Tags") {
+      chips.push({
+        id: "tag",
+        label: selectedTag,
+        onRemove: () => setSelectedTag("All Tags"),
+      });
+    }
+
+    if (minRating > 0) {
+      chips.push({
+        id: "rating",
+        label: `${minRating}★ & Above`,
+        onRemove: () => setMinRating(0),
+      });
+    }
+
+    if (careLevel !== "All") {
+      chips.push({
+        id: "care",
+        label: careLevel,
+        onRemove: () => setCareLevel("All"),
+      });
+    }
+
+    return chips;
+  }, [
+    searchQuery,
+    activeType,
+    activeSubCategory,
+    pricePreset,
+    minPrice,
+    maxPrice,
+    inStockOnly,
+    selectedTag,
+    minRating,
+    careLevel,
+    handleTypeChange,
+  ]);
+
+  const totalActiveFilterCount = activeChips.length;
+  const isAnyFilterActive = totalActiveFilterCount > 0;
   const showLoader = isSyncing && visibleItems.length === 0;
 
+  // Filter values bundle for Sidebar & Mobile Drawer
+  const filterValues: ShopFilterValues = {
+    activeType,
+    activeSubCategory,
+    pricePreset,
+    minPrice,
+    maxPrice,
+    inStockOnly,
+    selectedTag,
+    minRating,
+    careLevel,
+  };
+
+  // Determine dynamic grid columns
+  const gridColumnClass = useMemo(() => {
+    // Desktop: respects desktopGridCols (3 or 4)
+    const desktopClass = desktopGridCols === 4 ? "xl:grid-cols-4" : "xl:grid-cols-3";
+    // Mobile: respects mobileGridCols (1 or 2)
+    const mobileClass = mobileGridCols === 1 ? "grid-cols-1" : "grid-cols-2";
+
+    return `grid ${mobileClass} sm:grid-cols-2 md:grid-cols-3 ${desktopClass} gap-3.5 sm:gap-4 md:gap-6`;
+  }, [desktopGridCols, mobileGridCols]);
+
   return (
-    <main className="min-h-screen bg-background text-foreground pt-28 pb-16 px-4 sm:px-6 font-sans">
-      <div className="w-full max-w-[1200px] mx-auto">
+    <div className="w-full font-sans antialiased">
+      {/* ── 1. Clean Storefront Header / Collection Hero (Only when not hidden) ── */}
+      {!hideHero && (
+        <ShopHeroHeader
+          activeType={activeType}
+          activeSubCategory={activeSubCategory}
+          totalCount={activeType === "All" ? filteredAndSortedItems.length : filteredCount || totalProducts}
+          visibleCount={visibleItems.length}
+          userPincode={userPincode}
+          onClearPincode={handleClearPincode}
+        />
+      )}
 
-        {/* FILTER ENGINE PANEL */}
-        <div className="bg-gradient-to-br from-brand-dark via-[#0f3d21] to-brand-primary border border-white/10 rounded-2xl p-6 mb-10 shadow-2xl flex flex-col gap-6 backdrop-blur-md">
-          {/* Main Category Tabs */}
-          <div className="flex justify-between items-center flex-wrap gap-4 border-b border-white/10 pb-5">
-            <div className="flex gap-2.5 flex-wrap">
-              {TAB_OPTIONS.map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => handleTypeChange(type)}
-                  className={`border rounded-xl py-2 px-4 text-xs font-bold cursor-pointer transition-all duration-200 active:scale-95 ${activeType === type
-                    ? "bg-emerald-500 text-slate-950 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]"
-                    : "bg-white/5 text-emerald-100/80 border-white/10 hover:border-emerald-500/50 hover:bg-white/10 hover:text-white"
-                    }`}
-                >
-                  {type === "All" ? "Everything" : type}
-                </button>
-              ))}
-            </div>
+      {/* ── 2. Quick-Access Horizontal Category Chips/Pills ── */}
+      <ShopCategoryChips
+        activeType={activeType}
+        onTypeChange={handleTypeChange}
+        availableSubCategories={availableSubCategories}
+        activeSubCategory={activeSubCategory}
+        onSubCategoryChange={(sub) => {
+          setActiveSubCategory(sub);
+          setCurrentPage(1);
+        }}
+      />
 
-            {userPincode && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-emerald-300 font-semibold bg-emerald-500/10 px-3.5 py-1.5 rounded-xl border border-emerald-500/20 shadow-inner flex items-center gap-1.5">
-                  <span className="animate-pulse">📍</span> Delivering near {userPincode}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleClearPincode}
-                  className="text-xs text-emerald-300/60 hover:text-emerald-200 underline cursor-pointer ml-1"
-                >
-                  Change
-                </button>
-              </div>
-            )}
-          </div>
+      {/* ── 3. Main Catalog Layout: Sticky Sidebar (Desktop) + Product Section ── */}
+      <div className="flex items-start gap-6 lg:gap-8">
+        {/* Desktop Sticky Left Sidebar */}
+        <ShopFilterSidebar
+          filters={filterValues}
+          availableSubCategories={availableSubCategories}
+          totalActiveCount={totalActiveFilterCount}
+          onTypeChange={handleTypeChange}
+          onSubCategoryChange={(sub) => {
+            setActiveSubCategory(sub);
+            setCurrentPage(1);
+          }}
+          onPricePresetChange={(p) => {
+            setPricePreset(p);
+            setCurrentPage(1);
+          }}
+          onCustomPriceApply={handleCustomPriceApply}
+          onInStockChange={(stock) => {
+            setInStockOnly(stock);
+            setCurrentPage(1);
+          }}
+          onTagChange={(tag) => {
+            setSelectedTag(tag);
+            setCurrentPage(1);
+          }}
+          onRatingChange={(r) => {
+            setMinRating(r);
+            setCurrentPage(1);
+          }}
+          onCareLevelChange={(c) => {
+            setCareLevel(c);
+            setCurrentPage(1);
+          }}
+          onResetAll={handleResetFilters}
+        />
 
-          {/* Sub-categories Pills */}
-          {availableSubCategories.length > 1 && (
-            <div className="flex flex-col gap-3 bg-black/25 p-4 rounded-xl border border-white/5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400/90 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  Explore Categories
-                </span>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {availableSubCategories.map((sub) => (
-                  <button
-                    key={sub}
-                    type="button"
-                    onClick={() => {
-                      setActiveSubCategory(sub);
-                      setCurrentPage(1);
-                    }}
-                    className={`py-1.5 px-3.5 rounded-lg text-xs font-semibold cursor-pointer transition-all border ${activeSubCategory === sub
-                      ? "bg-emerald-500 text-slate-950 border-emerald-400 shadow-sm"
-                      : "bg-white/5 text-white/70 border-white/5 hover:border-white/20 hover:text-white"
-                      }`}
-                  >
-                    {sub}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+        {/* Right Section: Toolbar, Active Filter Chips, Product Grid, Loading/Empty & Pagination */}
+        <div className="flex-1 min-w-0">
+          {/* Top Utility Toolbar */}
+          <ShopToolbar
+            searchQuery={searchQuery}
+            onSearchChange={(q) => {
+              setSearchQuery(q);
+              setCurrentPage(1);
+            }}
+            priceSort={priceSort}
+            onSortChange={setPriceSort}
+            filters={filterValues}
+            totalActiveCount={totalActiveFilterCount}
+            onOpenMobileFilters={() => setIsMobileFilterOpen(true)}
+            activeChips={activeChips}
+            onResetAll={handleResetFilters}
+            gridCols={desktopGridCols}
+            onToggleGridCols={(cols) => {
+              setDesktopGridCols(cols);
+              setMobileGridCols(cols === 1 ? 1 : 2);
+            }}
+          />
 
-          {/* Search, Sorting, and Secondary Filters */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search products across catalog..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 transition-all font-sans"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white text-xs"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <select
-                value={priceSort}
-                onChange={(e) => setPriceSort(e.target.value as any)}
-                className="w-full bg-white/10 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400/50 cursor-pointer [&>option]:bg-slate-900 [&>option]:text-white"
-              >
-                <option value="default">Sort by: Featured</option>
-                <option value="lowToHigh">Price: Low to High</option>
-                <option value="highToLow">Price: High to Low</option>
-              </select>
-
-              <select
-                value={selectedTag}
-                onChange={(e) => setSelectedTag(e.target.value)}
-                className="w-full bg-white/10 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-400/50 cursor-pointer [&>option]:bg-slate-900 [&>option]:text-white"
-              >
-                <option value="All Tags">All Badges</option>
-                <option value="Bestseller">Bestseller</option>
-                <option value="Trending">Trending</option>
-                <option value="Featured">Featured</option>
-                <option value="New Arrival">New Arrival</option>
-              </select>
-            </div>
-
-            {isAnyFilterActive && (
-              <div className="flex items-center sm:col-span-2 lg:col-span-1 justify-end">
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="text-xs text-emerald-300 hover:text-white font-semibold underline cursor-pointer"
-                >
-                  Reset All Filters
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* FEEDBACK STATUS AND CATALOG GRID */}
-        {productError && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-xs font-semibold mb-6">
-            ⚠️ {productError}
-          </div>
-        )}
-
-        {showLoader ? (
-          <div className="py-24 flex justify-center items-center">
-            <PlantLoader />
-          </div>
-        ) : visibleItems.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
-            {visibleItems.map((item, idx) => (
-              <ShopItemCard key={item.id} item={item} index={idx} />
-            ))}
-          </div>
-        ) : isAnyFilterActive ? (
-          <div className="text-center py-20 bg-panel border border-line rounded-[24px] max-w-2xl mx-auto shadow-sm animate-scale-up">
-            <span className="text-5xl block mb-4">🔍</span>
-            <h3 className="text-lg font-bold text-foreground m-0 px-4">
-              No results found for applied filters
-            </h3>
-            <p className="text-muted-text text-xs mt-2 max-w-md mx-auto px-6 leading-relaxed">
-              No items match your selected filter combination. Please modify or clear your filters.
-            </p>
-            <div className="flex justify-center gap-3 mt-6 flex-wrap px-4">
+          {/* Feedback error alert if any */}
+          {productError && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-700 p-4 rounded-2xl text-xs font-semibold mb-6 flex items-center justify-between">
+              <span>⚠️ {productError}</span>
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="bg-brand-primary text-white border-none py-2.5 px-6 rounded-xl text-xs font-bold cursor-pointer hover:bg-brand-dark transition-all shadow-sm"
+                className="underline text-red-800 hover:text-red-950 font-bold ml-2 cursor-pointer"
               >
-                Clear All Filters
+                Reset catalog
               </button>
             </div>
-          </div>
-        ) : (
-          <div className="text-center py-20 bg-panel border border-line rounded-[24px]">
-            <span className="text-5xl block mb-4">🌵</span>
-            <h3 className="text-sm font-bold text-foreground m-0">No Marketplace Asset Found</h3>
-            <p className="text-muted-text text-xs mt-1">Please check back soon or reset filters.</p>
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="mt-5 bg-brand-primary text-white border-none py-2 px-5 rounded-xl text-xs font-semibold cursor-pointer hover:bg-brand-dark"
-            >
-              Reset Filters
-            </button>
-          </div>
-        )}
+          )}
 
-        {/* PAGINATION */}
-        {!isSyncing && totalPages > 1 && visibleItems.length > 0 && (
-          <div className="flex justify-center items-center gap-2 mt-14 border-t border-line pt-8">
-            <button
-              type="button"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              className="p-2 px-4 text-xs font-bold rounded-xl border border-line bg-panel text-muted-text hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-            >
-              ← Prev
-            </button>
+          {/* ── 4. Product Grid & States ── */}
+          {showLoader ? (
+            <ProductGridSkeleton count={desktopGridCols === 4 ? 12 : 9} className={gridColumnClass} />
+          ) : visibleItems.length > 0 ? (
+            <div className={gridColumnClass}>
+              {visibleItems.map((item, idx) => (
+                <ShopItemCard key={item.id} item={item} index={idx} />
+              ))}
+            </div>
+          ) : isAnyFilterActive ? (
+            /* Friendly Empty State with Filter Clear */
+            <div className="text-center py-16 sm:py-20 px-6 bg-white border border-slate-200/80 rounded-3xl max-w-xl mx-auto shadow-xs space-y-4">
+              <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center mx-auto text-3xl shadow-inner">
+                🔍
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                  No matching plants or products found
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+                  We couldn't find any products matching your active filters. Try modifying your
+                  price range, removing tags, or clearing filters.
+                </p>
+              </div>
 
-            {Array.from({ length: totalPages }).map((_, idx) => {
-              const pageNum = idx + 1;
-              return (
+              <div className="pt-2 flex flex-wrap justify-center gap-3">
                 <button
                   type="button"
-                  key={pageNum}
-                  onClick={() => setCurrentPage(pageNum)}
-                  className={`w-9 h-9 text-xs font-bold rounded-xl border transition-all ${
-                    currentPage === pageNum
-                      ? "bg-brand-primary text-white border-brand-primary shadow-sm"
-                      : "bg-panel text-muted-text border-line hover:text-foreground"
-                  }`}
+                  onClick={handleResetFilters}
+                  className="inline-flex items-center gap-2 bg-emerald-800 hover:bg-emerald-900 text-white py-2.5 px-6 rounded-xl text-xs sm:text-sm font-bold cursor-pointer transition-all shadow-sm active:scale-95"
                 >
-                  {pageNum}
+                  <RotateCcw className="w-4 h-4" />
+                  Clear All Filters
                 </button>
-              );
-            })}
+              </div>
+            </div>
+          ) : (
+            /* Blank state when marketplace is empty */
+            <div className="text-center py-16 sm:py-20 px-6 bg-white border border-slate-200/80 rounded-3xl max-w-xl mx-auto shadow-xs space-y-4">
+              <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto text-3xl">
+                🌵
+              </div>
+              <h3 className="text-base font-bold text-slate-900">No Marketplace Products Found</h3>
+              <p className="text-xs text-slate-500">
+                Products for this category are currently being conditioned in nursery greenhouses.
+              </p>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="mt-2 inline-flex items-center gap-2 bg-emerald-800 text-white py-2.5 px-5 rounded-xl text-xs font-semibold hover:bg-emerald-900 transition-colors cursor-pointer"
+              >
+                Return to All Plants
+              </button>
+            </div>
+          )}
 
-            <button
-              type="button"
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-              className="p-2 px-4 text-xs font-bold rounded-xl border border-line bg-panel text-muted-text hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          {/* ── 5. Polished Pagination Controls ── */}
+          {!isSyncing && totalPages > 1 && visibleItems.length > 0 && (
+            <nav
+              aria-label="Shop catalog pagination"
+              className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-12 pt-6 border-t border-slate-200/80"
             >
-              Next →
-            </button>
-          </div>
-        )}
+              <div className="text-xs text-slate-500 font-medium">
+                Page <strong className="text-slate-800 font-bold">{currentPage}</strong> of{" "}
+                <strong className="text-slate-800 font-bold">{totalPages}</strong>
+              </div>
 
+              <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                {/* Previous Button */}
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => {
+                    setCurrentPage((p) => Math.max(p - 1, 1));
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="h-10 px-3.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
+                >
+                  ← Prev
+                </button>
+
+                {/* Page Number Buttons */}
+                {Array.from({ length: totalPages }).map((_, idx) => {
+                  const pageNum = idx + 1;
+                  // Show first, last, current, and neighbours
+                  if (
+                    pageNum === 1 ||
+                    pageNum === totalPages ||
+                    Math.abs(pageNum - currentPage) <= 1
+                  ) {
+                    const isActive = currentPage === pageNum;
+                    return (
+                      <button
+                        type="button"
+                        key={pageNum}
+                        onClick={() => {
+                          setCurrentPage(pageNum);
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className={`w-10 h-10 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                          isActive
+                            ? "bg-emerald-800 text-white border-emerald-800 shadow-sm"
+                            : "bg-white text-slate-700 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50 hover:text-emerald-900"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  }
+
+                  // Render ellipsis for jumps
+                  if (pageNum === currentPage - 2 || pageNum === currentPage + 2) {
+                    return (
+                      <span key={pageNum} className="w-8 text-center text-slate-400 text-xs font-bold">
+                        ...
+                      </span>
+                    );
+                  }
+
+                  return null;
+                })}
+
+                {/* Next Button */}
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => {
+                    setCurrentPage((p) => Math.min(p + 1, totalPages));
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="h-10 px-3.5 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
+                >
+                  Next →
+                </button>
+              </div>
+            </nav>
+          )}
+        </div>
       </div>
-    </main>
+
+      {/* ── 6. Mobile & Tablet Filter Drawer / Bottom Sheet ── */}
+      <ShopMobileFilterDrawer
+        isOpen={isMobileFilterOpen}
+        onClose={() => setIsMobileFilterOpen(false)}
+        filters={filterValues}
+        availableSubCategories={availableSubCategories}
+        totalActiveCount={totalActiveFilterCount}
+        matchingCount={filteredAndSortedItems.length}
+        onTypeChange={handleTypeChange}
+        onSubCategoryChange={(sub) => {
+          setActiveSubCategory(sub);
+          setCurrentPage(1);
+        }}
+        onPricePresetChange={(p) => {
+          setPricePreset(p);
+          setCurrentPage(1);
+        }}
+        onCustomPriceApply={handleCustomPriceApply}
+        onInStockChange={(stock) => {
+          setInStockOnly(stock);
+          setCurrentPage(1);
+        }}
+        onTagChange={(tag) => {
+          setSelectedTag(tag);
+          setCurrentPage(1);
+        }}
+        onRatingChange={(r) => {
+          setMinRating(r);
+          setCurrentPage(1);
+        }}
+        onCareLevelChange={(c) => {
+          setCareLevel(c);
+          setCurrentPage(1);
+        }}
+        onResetAll={handleResetFilters}
+      />
+    </div>
   );
 }

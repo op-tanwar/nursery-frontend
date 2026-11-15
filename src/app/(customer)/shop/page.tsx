@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import ShopCatalogClient from "@/components/customer/shop/ShopCatalogClient";
 import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
+import { ProductCardSkeleton } from "@/components/customer/shop/ProductCardSkeleton";
 
 // ─── Dynamic Metadata for SEO ─────────────────────────────────────────────
 // searchParams drives dynamic title for shared catalog links (/shop?type=Plants)
@@ -65,24 +66,44 @@ export async function generateMetadata({
   };
 }
 
-// ─── Shop Page Skeleton (Suspense fallback) ───────────────────────────────
+// ─── Shop Page Skeleton (Suspense fallback matching exact layout) ──────────
 function ShopPageSkeleton() {
   return (
-    <main className="min-h-screen bg-background pt-28 pb-16 px-4 sm:px-6 animate-pulse">
-      <div className="w-full max-w-[1200px] mx-auto">
-        {/* Filter panel shimmer */}
-        <div className="bg-gradient-to-br from-brand-dark via-[#0f3d21] to-brand-primary rounded-2xl p-6 mb-10 h-[160px]" />
-        {/* Grid shimmer */}
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-6">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <div
-              key={i}
-              className="h-[360px] bg-slate-100 rounded-2xl border border-slate-200/60"
-            />
-          ))}
+    <div className="w-full animate-pulse space-y-6">
+      {/* Hero Header Shimmer */}
+      <div className="w-full h-44 sm:h-52 bg-gradient-to-br from-emerald-950/80 to-emerald-900/60 rounded-3xl" />
+
+      {/* Category Pills Shimmer */}
+      <div className="flex gap-2.5 overflow-hidden py-1">
+        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+          <div key={i} className="h-9 w-28 bg-slate-200/80 rounded-full shrink-0" />
+        ))}
+      </div>
+
+      {/* Main Area: Sidebar + Grid */}
+      <div className="flex items-start gap-6 lg:gap-8">
+        {/* Sidebar Shimmer */}
+        <div className="hidden lg:block w-64 xl:w-72 h-[600px] bg-white rounded-2xl border border-slate-200/80 p-5 space-y-4 shrink-0">
+          <div className="h-5 w-20 bg-slate-200 rounded-md" />
+          <div className="h-px w-full bg-slate-100" />
+          <div className="space-y-2">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-7 w-full bg-slate-100 rounded-lg" />
+            ))}
+          </div>
+        </div>
+
+        {/* Product Grid Area Shimmer */}
+        <div className="flex-1 space-y-4">
+          <div className="h-14 w-full bg-white rounded-2xl border border-slate-200/80" />
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-3.5 sm:gap-4 md:gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
+          </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -94,11 +115,13 @@ export default function ShopPage() {
   ];
 
   return (
-    <>
-      <BreadcrumbJsonLd items={breadcrumbItems} />
-      <Suspense fallback={<ShopPageSkeleton />}>
-        <ShopCatalogClient />
-      </Suspense>
-    </>
+    <main className="min-h-screen bg-background text-foreground pt-24 sm:pt-28 pb-16 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        <BreadcrumbJsonLd items={breadcrumbItems} />
+        <Suspense fallback={<ShopPageSkeleton />}>
+          <ShopCatalogClient />
+        </Suspense>
+      </div>
+    </main>
   );
 }

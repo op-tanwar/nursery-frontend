@@ -426,6 +426,7 @@ export default async function CategoryPage({
           <ShopCatalogClient
             initialType={category.mappedType}
             initialCategory={category.mappedCategory}
+            hideHero={true}
           />
         </Suspense>
 
