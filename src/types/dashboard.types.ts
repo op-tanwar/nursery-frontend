@@ -303,12 +303,12 @@ export interface IAdminDashboardResponse extends IAdminDashboardData {
   success: boolean;
 }
 
-/** Safe INR formatter — never returns NaN */
+/** Safe INR formatter — standard 2 decimal places for financial reconciliation */
 export const formatINR = (value: number | null | undefined): string => {
   const n = Number(value);
   const safe = Number.isFinite(n) ? n : 0;
   return `₹${safe.toLocaleString("en-IN", {
-    minimumFractionDigits: 0,
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 };
