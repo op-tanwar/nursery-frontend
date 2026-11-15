@@ -1,20 +1,6 @@
 import { ShopItemType } from "@/components/customer/common/ShopItemCard";
 import { determineProductTag } from "@/utils/productBadge";
-
-// ─── URL Resolution ────────────────────────────────────────────────────────
-// NEXT_PUBLIC_API_URL is set in .env.local and in Vercel project env settings.
-// Log the resolved base URL on every cold-start so it appears in Vercel
-// function logs under: Vercel Dashboard → Project → Deployments → Functions.
-const API_BASE_URL = (() => {
-  const resolved =
-    process.env.NEXT_PUBLIC_API_URL ||
-    process.env.API_URL ||
-    "https://nursery-backend-2rg3.onrender.com/api/v1";
-  // Trim trailing slash so URL concat never produces double slashes
-  const clean = resolved.replace(/\/+$/, "");
-  console.log("[catalogServerService] Resolved API_BASE_URL:", clean);
-  return clean;
-})();
+import { fetchWithRetry, API_BASE_URL } from "@/lib/server-api";
 
 // ─── Standard request headers ─────────────────────────────────────────────
 // Some hosting providers (including Render) reject requests without a
@@ -67,32 +53,14 @@ async function fetchJson(
   cacheMode: RequestCache | null,
   revalidate?: number
 ): Promise<any> {
-  const fetchOptions: RequestInit = {
-    headers: FETCH_HEADERS,
-    ...(revalidate !== undefined
-      ? { next: { revalidate } }
-      : { cache: cacheMode ?? "no-store" }),
-  };
+  const result = await fetchWithRetry<any>(url, {
+    cache: cacheMode ?? undefined,
+    revalidate,
+    retries: 2,
+    timeoutMs: 15000,
+  });
 
-  console.log(`[catalogServerService] → GET ${url} (cache: ${revalidate !== undefined ? `revalidate:${revalidate}` : cacheMode})`);
-
-  const res = await fetch(url, fetchOptions);
-
-  console.log(`[catalogServerService] ← ${res.status} ${res.statusText} from ${url}`);
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "(unreadable)");
-    console.error(
-      `[catalogServerService] HTTP ${res.status} error from ${url}\nResponse body: ${body.slice(0, 600)}`
-    );
-    return null;
-  }
-
-  const data = await res.json();
-  // Log top-level keys so any structure mismatch is immediately visible
-  const keys = data && typeof data === "object" ? Object.keys(data) : typeof data;
-  console.log(`[catalogServerService] Response keys from ${url}:`, keys);
-  return data;
+  return result.data;
 }
 
 /**

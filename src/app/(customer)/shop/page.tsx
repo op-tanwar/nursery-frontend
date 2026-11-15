@@ -4,19 +4,38 @@ import ShopCatalogClient from "@/components/customer/shop/ShopCatalogClient";
 import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
 import { ProductCardSkeleton } from "@/components/customer/shop/ProductCardSkeleton";
+import { getShopProductsServer } from "@/lib/server-api";
+
+// ⚡ PERF: Incremental Static Regeneration (ISR) with 60s background revalidation
+export const revalidate = 60;
+
+interface ShopPageProps {
+  searchParams: Promise<{
+    type?: string;
+    category?: string;
+    subCategory?: string;
+    search?: string;
+    keyword?: string;
+    sort?: string;
+    page?: string;
+    price?: string;
+    minPrice?: string;
+    maxPrice?: string;
+  }>;
+}
 
 // ─── Dynamic Metadata for SEO ─────────────────────────────────────────────
 // searchParams drives dynamic title for shared catalog links (/shop?type=Plants)
 export async function generateMetadata({
   searchParams,
-}: {
-  searchParams: Promise<{ type?: string; category?: string; search?: string; sort?: string; price?: string }>;
-}): Promise<Metadata> {
+}: ShopPageProps): Promise<Metadata> {
   const params = await searchParams;
   const type = params.type || "All";
   const category = params.category;
-  const search = params.search;
-  const hasFilterParams = Boolean(search || params.sort || params.price || (category && category !== "All"));
+  const search = params.search || params.keyword;
+  const hasFilterParams = Boolean(
+    search || params.sort || params.price || params.minPrice || params.maxPrice || (category && category !== "All")
+  );
 
   const titleMap: Record<string, string> = {
     Plants: "Buy Live Plants Online India — Fresh From Certified Nurseries",
@@ -108,7 +127,21 @@ function ShopPageSkeleton() {
 }
 
 // ─── Shop Page RSC Shell ──────────────────────────────────────────────────
-export default function ShopPage() {
+export default async function ShopPage({ searchParams }: ShopPageProps) {
+  const resolvedParams = await searchParams;
+
+  // 🚀 Fetch initial catalog on server (Fast, SEO-indexed, Cold-start tolerant)
+  const catalogData = await getShopProductsServer({
+    type: resolvedParams.type,
+    category: resolvedParams.category,
+    subCategory: resolvedParams.subCategory,
+    search: resolvedParams.search || resolvedParams.keyword,
+    sort: resolvedParams.sort,
+    page: resolvedParams.page,
+    minPrice: resolvedParams.minPrice,
+    maxPrice: resolvedParams.maxPrice,
+  });
+
   const breadcrumbItems = [
     { name: "Home", url: SITE_URL },
     { name: "Shop", url: `${SITE_URL}/shop` },
@@ -119,7 +152,16 @@ export default function ShopPage() {
       <div className="max-w-7xl mx-auto">
         <BreadcrumbJsonLd items={breadcrumbItems} />
         <Suspense fallback={<ShopPageSkeleton />}>
-          <ShopCatalogClient />
+          <ShopCatalogClient
+            initialType={resolvedParams.type}
+            initialCategory={resolvedParams.category}
+            initialSearch={resolvedParams.search || resolvedParams.keyword}
+            initialProducts={catalogData.products}
+            initialRawProducts={catalogData.rawProducts}
+            initialTotalCount={catalogData.totalCount}
+            initialFilteredCount={catalogData.filteredCount}
+            initialPage={catalogData.page}
+          />
         </Suspense>
       </div>
     </main>

@@ -173,6 +173,8 @@ interface ProductDetailClientProps {
   initialProduct: ServerProductData | null;
   shopType: ShopUrlType;
   urlSlug: string;
+  initialRelatedProducts?: any[];
+  initialCrossSellProducts?: any[];
 }
 
 // ─────────────────────────────────────────────
@@ -183,6 +185,8 @@ export default function ProductDetailClient({
   initialProduct,
   shopType,
   urlSlug,
+  initialRelatedProducts = [],
+  initialCrossSellProducts = [],
 }: ProductDetailClientProps) {
   const router = useRouter();
   const params = useParams();
@@ -194,8 +198,8 @@ export default function ProductDetailClient({
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<TabId>("description");
-  const [crossSellItems, setCrossSellItems] = useState<any[]>([]);
-  const [relatedItems, setRelatedItems] = useState<any[]>([]);
+  const [crossSellItems, setCrossSellItems] = useState<any[]>(initialCrossSellProducts);
+  const [relatedItems, setRelatedItems] = useState<any[]>(initialRelatedProducts);
 
   // Client-side fallback: only runs when server fetch failed
   const resolveClientSide = useCallback(async () => {
@@ -330,18 +334,23 @@ export default function ProductDetailClient({
     return () => { isMounted = false; };
   }, [shopType, urlSlug]);
 
-  // When server pre-fetched successfully, only load related/cross-sell on client
+  // When server pre-fetched successfully, only load related/cross-sell on client if not already provided
   useEffect(() => {
     if (initialProduct) {
-      fetchRelatedAndCrossSell(shopType, initialProduct.id).then(({ relatedList, crossList }) => {
-        setCrossSellItems(crossList);
-        setRelatedItems(relatedList);
-      });
+      if (
+        (!initialRelatedProducts || initialRelatedProducts.length === 0) &&
+        (!initialCrossSellProducts || initialCrossSellProducts.length === 0)
+      ) {
+        fetchRelatedAndCrossSell(shopType, initialProduct.id).then(({ relatedList, crossList }) => {
+          setCrossSellItems(crossList);
+          setRelatedItems(relatedList);
+        });
+      }
       return;
     }
     // Server fetch failed — run full client-side resolution
     resolveClientSide();
-  }, [initialProduct, shopType, resolveClientSide]);
+  }, [initialProduct, shopType, resolveClientSide, initialRelatedProducts, initialCrossSellProducts]);
 
   const handleAddNewReview = (newReview: ReviewType) => {
     if (!item) return;

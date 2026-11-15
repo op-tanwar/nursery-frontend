@@ -6,6 +6,10 @@ import { ChevronRight, ShieldCheck, Truck, Sparkles, BookOpen, HelpCircle } from
 import ShopCatalogClient from "@/components/customer/shop/ShopCatalogClient";
 import { BreadcrumbJsonLd, FaqPageJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
+import { getShopProductsServer } from "@/lib/server-api";
+
+// ⚡ PERF: Incremental Static Regeneration (ISR) with 60s background revalidation
+export const revalidate = 60;
 
 interface PageParams {
   type: string;
@@ -362,6 +366,12 @@ export default async function CategoryPage({
     notFound();
   }
 
+  // 🚀 Fetch initial category products on server (Fast, SEO-indexed, Cold-start tolerant)
+  const catalogData = await getShopProductsServer({
+    type: category.mappedType,
+    category: category.mappedCategory,
+  });
+
   const breadcrumbItems = [
     { name: "Home", url: SITE_URL },
     { name: "Shop", url: `${SITE_URL}/shop` },
@@ -426,6 +436,11 @@ export default async function CategoryPage({
           <ShopCatalogClient
             initialType={category.mappedType}
             initialCategory={category.mappedCategory}
+            initialProducts={catalogData.products}
+            initialRawProducts={catalogData.rawProducts}
+            initialTotalCount={catalogData.totalCount}
+            initialFilteredCount={catalogData.filteredCount}
+            initialPage={catalogData.page}
             hideHero={true}
           />
         </Suspense>

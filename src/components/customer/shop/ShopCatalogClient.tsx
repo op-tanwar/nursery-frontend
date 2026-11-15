@@ -96,16 +96,31 @@ const FALLBACK_EMOJI: Record<ShopUrlType, string> = {
 export interface ShopCatalogClientProps {
   initialType?: string;
   initialCategory?: string;
+  initialSearch?: string;
+  initialProducts?: ShopItemType[];
+  initialRawProducts?: any[];
+  initialTotalCount?: number;
+  initialFilteredCount?: number;
+  initialPage?: number;
   hideHero?: boolean;
 }
 
 export default function ShopCatalogClient({
   initialType,
   initialCategory,
+  initialSearch,
+  initialProducts,
+  initialRawProducts,
+  initialTotalCount,
+  initialFilteredCount,
+  initialPage = 1,
   hideHero = false,
 }: ShopCatalogClientProps = {}) {
   const dispatch = useAppDispatch();
   const searchParams = useSearchParams();
+
+  // Track initial mount to prevent duplicate fetch when server has hydrated initial data
+  const isInitialMount = React.useRef(true);
 
   // Extract catalog state from unified Redux slice
   const {
@@ -122,11 +137,11 @@ export default function ShopCatalogClient({
     return "All";
   });
   const [activeSubCategory, setActiveSubCategory] = useState<string>(() => initialCategory || "All");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState(() => initialSearch || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(() => initialSearch || "");
   const [priceSort, setPriceSort] = useState<SortOption>("default");
   const [selectedTag, setSelectedTag] = useState<string>("All Tags");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPage);
   const [userPincode, setUserPincode] = useState<string | null>(null);
 
   // Enhanced D2C Filter Attributes
@@ -226,6 +241,21 @@ export default function ShopCatalogClient({
   useEffect(() => {
     let isMounted = true;
 
+    // Skip redundant client fetch on initial mount if server already provided products
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      if (initialRawProducts && initialRawProducts.length > 0) {
+        dispatch(
+          setAllProductsData({
+            products: initialRawProducts,
+            totalCount: initialTotalCount ?? initialRawProducts.length,
+            filteredCount: initialFilteredCount ?? initialRawProducts.length,
+          })
+        );
+        return;
+      }
+    }
+
     const syncMarketplaceCatalog = async () => {
       try {
         dispatch(setProductLoading(true));
@@ -278,9 +308,8 @@ export default function ShopCatalogClient({
 
   // Product normalization mapping
   const mappedMarketItems = useMemo<ShopItemType[]>(() => {
-    if (!Array.isArray(catalogProducts)) return [];
-
-    return catalogProducts.map((product: any) => {
+    if (Array.isArray(catalogProducts) && catalogProducts.length > 0) {
+      return catalogProducts.map((product: any) => {
       const nurseryName =
         product.vendorName ||
         (typeof product.vendor === "string" ? product.vendor : product.vendor?.name || product.vendor?.businessName) ||
@@ -368,7 +397,14 @@ export default function ShopCatalogClient({
         createdAt: product.createdAt,
       };
     });
-  }, [catalogProducts]);
+  }
+
+  if (initialProducts && initialProducts.length > 0) {
+    return initialProducts;
+  }
+
+  return [];
+}, [catalogProducts, initialProducts]);
 
   // Comprehensive client-side filtering & sorting
   const filteredAndSortedItems = useMemo(() => {
@@ -497,9 +533,12 @@ export default function ShopCatalogClient({
   }, [activeType]);
 
   const totalPages = useMemo(() => {
-    const totalCount = activeType === "All" ? filteredAndSortedItems.length : filteredCount || totalProducts;
+    const totalCount =
+      activeType === "All"
+        ? filteredAndSortedItems.length
+        : filteredCount || initialFilteredCount || initialTotalCount || totalProducts;
     return Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-  }, [activeType, filteredAndSortedItems.length, filteredCount, totalProducts]);
+  }, [activeType, filteredAndSortedItems.length, filteredCount, initialFilteredCount, initialTotalCount, totalProducts]);
 
   // Aggregate active filter counts & labels for chips
   const activeChips = useMemo<ActiveFilterChip[]>(() => {
@@ -632,7 +671,7 @@ export default function ShopCatalogClient({
         <ShopHeroHeader
           activeType={activeType}
           activeSubCategory={activeSubCategory}
-          totalCount={activeType === "All" ? filteredAndSortedItems.length : filteredCount || totalProducts}
+          totalCount={activeType === "All" ? filteredAndSortedItems.length : filteredCount || initialFilteredCount || initialTotalCount || totalProducts}
           visibleCount={visibleItems.length}
           userPincode={userPincode}
           onClearPincode={handleClearPincode}

@@ -7,6 +7,10 @@ import {
   TYPE_LABELS,
   FALLBACK_EMOJI,
 } from "@/services/server/productServerService";
+import {
+  getRelatedProductsServer,
+  getCrossSellProductsServer,
+} from "@/lib/server-api";
 import ProductDetailClient from "@/components/customer/shop/ProductDetailClient";
 import { ProductJsonLd, BreadcrumbJsonLd, FaqPageJsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/config/site";
@@ -125,8 +129,16 @@ export default async function ShopItemDetailPage({
     notFound();
   }
 
-  // Server-fetch the product
-  const initialProduct = await resolveProductServer(shopType, slug);
+  // Server-fetch the product, related items, and cross-sell items in parallel
+  const [initialProduct, relatedProducts, crossSellProducts] = await Promise.all([
+    resolveProductServer(shopType, slug),
+    getRelatedProductsServer(shopType, slug, 4),
+    getCrossSellProductsServer(slug, 3),
+  ]);
+
+  if (!initialProduct) {
+    notFound();
+  }
 
   // Structured Data Preparation
   const categoryLabel = TYPE_LABELS[shopType] || "Plants";
@@ -189,6 +201,8 @@ export default async function ShopItemDetailPage({
           initialProduct={initialProduct}
           shopType={shopType}
           urlSlug={slug}
+          initialRelatedProducts={relatedProducts}
+          initialCrossSellProducts={crossSellProducts}
         />
       </Suspense>
     </>
