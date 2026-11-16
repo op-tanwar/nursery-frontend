@@ -643,6 +643,43 @@ function toStringArray(value: unknown): string[] {
 }
 
 /**
+ * 🎯 Product Recommendations Server Fetcher for PDP (Cross-sell + Similar Collections)
+ * Wrapped with React.cache() so multiple callers on the same PDP render share 1 network request.
+ */
+export const getProductRecommendationsServer = cache(
+  async (
+    currentIdOrSlug: string,
+    limit = 4,
+    crossLimit = 3
+  ): Promise<{ frequentlyBoughtTogether: any[]; similarCollections: any[] } | null> => {
+    try {
+      const res = await fetchWithRetry<any>(
+        `/products/${encodeURIComponent(currentIdOrSlug)}/recommendations?limit=${limit}&crossLimit=${crossLimit}`,
+        {
+          revalidate: 60,
+          tags: ["shop-catalog", "products", `recommendations-${currentIdOrSlug}`],
+          timeoutMs: 8000,
+        }
+      );
+
+      if (res.ok && res.data?.success) {
+        return {
+          frequentlyBoughtTogether: Array.isArray(res.data.frequentlyBoughtTogether)
+            ? res.data.frequentlyBoughtTogether
+            : [],
+          similarCollections: Array.isArray(res.data.similarCollections)
+            ? res.data.similarCollections
+            : [],
+        };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+);
+
+/**
  * 🔄 Related Products Server Fetcher for PDP
  */
 export async function getRelatedProductsServer(
@@ -651,6 +688,21 @@ export async function getRelatedProductsServer(
   limit = 4
 ): Promise<any[]> {
   try {
+    // 1. Try smart recommendation endpoint first
+    const recs = await getProductRecommendationsServer(currentIdOrSlug, limit, 3);
+    if (recs && recs.similarCollections.length > 0) {
+      return recs.similarCollections
+        .filter(
+          (p: any) =>
+            p.isNurseryActive !== false &&
+            p.isPublished !== false &&
+            p.isActive !== false &&
+            (p._id !== currentIdOrSlug && p.slug !== currentIdOrSlug && p.id !== currentIdOrSlug)
+        )
+        .slice(0, limit);
+    }
+
+    // 2. Resilient fallback to category query
     const category = URL_TYPE_TO_CATEGORY[shopType] || shopType;
     const res = await fetchWithRetry<any>(`/products?category=${category}&limit=${limit + 2}`, {
       revalidate: 60,
@@ -688,6 +740,21 @@ export async function getCrossSellProductsServer(
   limit = 3
 ): Promise<any[]> {
   try {
+    // 1. Try smart recommendation endpoint first
+    const recs = await getProductRecommendationsServer(currentIdOrSlug, 4, limit);
+    if (recs && recs.frequentlyBoughtTogether.length > 0) {
+      return recs.frequentlyBoughtTogether
+        .filter(
+          (p: any) =>
+            p.isNurseryActive !== false &&
+            p.isPublished !== false &&
+            p.isActive !== false &&
+            (p._id !== currentIdOrSlug && p.slug !== currentIdOrSlug && p.id !== currentIdOrSlug)
+        )
+        .slice(0, limit);
+    }
+
+    // 2. Resilient fallback
     const res = await fetchWithRetry<any>(`/products?limit=${limit + 2}`, {
       revalidate: 120,
       tags: ["cross-sell-products"],

@@ -11,11 +11,13 @@ import { RootState } from "@/redux/store";
 import { cartActionSuccess, setCartError, addToGuestCartAction } from "@/redux/slices/cartSlice";
 import { cartService } from "@/services/cartWishlistService";
 import { normalizeItemModel } from "@/utils/guestCart";
+import { getShopCategorySegment } from "@/utils/productUrl";
 
 export interface SuggestionItem {
   id: string;
   slug?: string;
   type: string;
+  category?: string;
   name: string;
   price: number;
   emoji: string;
@@ -63,7 +65,7 @@ export default function SuggestionsSection({ suggestions }: SuggestionsSectionPr
               emoji: item.emoji,
             },
             quantity: 1,
-            itemModel: normalizeItemModel(item.type),
+            itemModel: normalizeItemModel(item.category || item.type),
           })
         );
         toast.success(`${item.name} added to cart!`);
@@ -102,14 +104,8 @@ export default function SuggestionsSection({ suggestions }: SuggestionsSectionPr
 
       <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-3 gap-4">
         {suggestions.map((sug) => {
-          // Dynamic router mapping layer sync
-          const lowerType = sug.type.toLowerCase();
-          const routeType =
-            lowerType === "pots"
-              ? "pots"
-              : lowerType === "accessories"
-                ? "accessories"
-                : "plants";
+          // Dynamic router mapping layer sync (all 8 canonical categories)
+          const routeType = getShopCategorySegment(sug.category || sug.type);
 
           // Fallback route token target
           const routeIdentifier = sug.slug || sug.id;

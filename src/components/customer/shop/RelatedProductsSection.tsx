@@ -2,6 +2,7 @@
 
 import ShopItemCard, { ShopItemType } from "@/components/customer/common/ShopItemCard";
 import { determineProductTag } from "@/utils/productBadge";
+import { getShopCategorySegment } from "@/utils/productUrl";
 
 interface RelatedProductNode {
   _id?: string;
@@ -74,11 +75,13 @@ export default function RelatedProductsSection({
             vendorObj?.slug ||
             vendorName.toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
 
+          const itemType = (getShopCategorySegment(prod.category) || targetType) as ShopItemType["type"];
+
           // 🌟 Adapt standard item interface layout mappings securely
           const adaptedItem: ShopItemType = {
             id: prodId,
             slug: prodSlug,
-            type: targetType as ShopItemType["type"],
+            type: itemType,
             category: prod.category || "Standard Tier",
             name: prod.name || "Ecosystem Unit",
             vendor: vendorName,
@@ -127,7 +130,9 @@ export default function RelatedProductsSection({
                         ? "🌱"
                         : targetType === "plant-stands-shelves"
                           ? "🪜"
-                          : "🌿"),
+                          : targetType === "artificial-dried-plants"
+                            ? "🌵"
+                            : "🌿"),
           };
 
           return (

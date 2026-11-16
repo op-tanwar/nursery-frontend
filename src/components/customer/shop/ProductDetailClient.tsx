@@ -10,6 +10,7 @@ import ErrorFallback from "@/components/customer/shop/ErrorFallback";
 import ProductImageSection from "@/components/customer/shop/ProductImageSection";
 import ProductInfoSection from "@/components/customer/shop/ProductInfoSection";
 import { determineProductTag } from "@/utils/productBadge";
+import { getShopCategorySegment } from "@/utils/productUrl";
 
 // ⚡ PERF: Below-the-fold components loaded lazily — they don't block initial paint
 const SuggestionsSection = lazy(() => import("@/components/customer/shop/SuggestionsSection"));
@@ -145,6 +146,26 @@ async function fetchRelatedAndCrossSell(
   currentItemId: string
 ): Promise<{ relatedList: any[]; crossList: any[] }> {
   try {
+    // 1. Try smart recommendation endpoint first
+    const recsRes = await productService.getProductRecommendations(currentItemId, {
+      limit: 4,
+      crossLimit: 3,
+    });
+    if (
+      recsRes?.success &&
+      ((recsRes.similarCollections && recsRes.similarCollections.length > 0) ||
+        (recsRes.frequentlyBoughtTogether && recsRes.frequentlyBoughtTogether.length > 0))
+    ) {
+      const relatedList = (recsRes.similarCollections || [])
+        .filter((p: any) => (p._id || p.id) !== currentItemId)
+        .slice(0, 4);
+      const crossList = (recsRes.frequentlyBoughtTogether || [])
+        .filter((p: any) => (p._id || p.id) !== currentItemId)
+        .slice(0, 3);
+      return { relatedList, crossList };
+    }
+
+    // 2. Resilient fallback
     const [relatedRes, crossRes] = await Promise.all([
       productService.getProducts({ category: shopType as any, limit: 5 }),
       productService.getProducts({ limit: 4 }),
@@ -371,15 +392,34 @@ export default function ProductDetailClient({
 
   const normalizedSuggestions = useMemo(() => {
     if (!crossSellItems || !Array.isArray(crossSellItems)) return [];
-    return crossSellItems.map((cross: any) => ({
-      id: cross._id || cross.id,
-      slug: cross.slug || cross._id || cross.id,
-      type: shopType === "plants" ? "Pots" : "Plants",
-      name: cross.name || "Cross Catalog Unit",
-      price: cross.price || 0,
-      emoji: cross.coverImage?.url || (shopType === "plants" ? "🏺" : "🌿"),
-    }));
-  }, [crossSellItems, shopType]);
+    return crossSellItems.map((cross: any) => {
+      const rawCat = cross.category || cross.itemModel || "";
+      const crossShopType = (getShopCategorySegment(rawCat) || "plants") as ShopUrlType;
+      const displayType = TYPE_LABELS[crossShopType] || cross.type || "Add-on";
+      const fallbackEmoji = FALLBACK_EMOJI[crossShopType] || "🌿";
+      const imageUrl =
+        cross.coverImage?.url ||
+        (Array.isArray(cross.images) && cross.images[0]?.url) ||
+        cross.emoji;
+
+      const isRemoteImg =
+        typeof imageUrl === "string" &&
+        (imageUrl.startsWith("http") || imageUrl.startsWith("/"));
+
+      return {
+        id: cross._id || cross.id,
+        slug: cross.slug || cross._id || cross.id,
+        type: displayType,
+        category: cross.category || crossShopType,
+        name: cross.name || "Recommended Add-on",
+        price:
+          cross.discountPrice > 0 && cross.discountPrice < cross.price
+            ? cross.discountPrice
+            : cross.price || 0,
+        emoji: isRemoteImg ? imageUrl : cross.emoji || fallbackEmoji,
+      };
+    });
+  }, [crossSellItems]);
 
   if (loading) return <LoadingSkeleton />;
   if (error || !item) return <ErrorFallback error={error} onRetry={() => router.push("/shop")} />;

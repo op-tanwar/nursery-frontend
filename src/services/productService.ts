@@ -131,6 +131,26 @@ export const productService = {
   },
 
   /**
+   * 🎯 Fetch product recommendations (cross-sell pairs & similar collections)
+   */
+  getProductRecommendations: async (
+    idOrSlug: string,
+    params: { limit?: number; crossLimit?: number } = {}
+  ): Promise<{
+    success: boolean;
+    frequentlyBoughtTogether: any[];
+    similarCollections: any[];
+  }> => {
+    const qp = new URLSearchParams();
+    if (params.limit) qp.append("limit", String(params.limit));
+    if (params.crossLimit) qp.append("crossLimit", String(params.crossLimit));
+    const qs = qp.toString();
+    const endpoint = `/products/${encodeURIComponent(idOrSlug)}/recommendations${qs ? `?${qs}` : ""}`;
+    const res: any = await api.get(endpoint);
+    return res?.data ?? res;
+  },
+
+  /**
    * Fetch products for a specific nursery / vendor
    */
   getProductsByNursery: async (
