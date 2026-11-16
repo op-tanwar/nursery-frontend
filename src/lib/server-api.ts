@@ -418,7 +418,8 @@ export async function getShopProductsServer(
 
   const endpoint = `/products?${query.toString()}`;
   const res = await fetchWithRetry<any>(endpoint, {
-    revalidate: 60,
+    cache: "no-store",
+    revalidate: 0,
     tags: ["shop-catalog"],
     timeoutMs: 12000,
   });

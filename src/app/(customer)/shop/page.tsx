@@ -6,8 +6,9 @@ import { SITE_URL } from "@/config/site";
 import { ProductCardSkeleton } from "@/components/customer/shop/ProductCardSkeleton";
 import { getShopProductsServer } from "@/lib/server-api";
 
-// ⚡ PERF: Incremental Static Regeneration (ISR) with 60s background revalidation
-export const revalidate = 60;
+// ⚡ FORCE DYNAMIC: Live multi-vendor catalog reflecting immediate vendor status, stock, and pricing
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface ShopPageProps {
   searchParams: Promise<{
