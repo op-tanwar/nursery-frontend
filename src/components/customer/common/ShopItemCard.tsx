@@ -63,6 +63,8 @@ export interface ShopItemType {
   ratings?: number;
   reviewsCount?: number;
   numOfReviews?: number;
+  numReviews?: number;
+  reviewCount?: number;
   discountPrice?: number;
   createdAt?: string;
 }
@@ -87,6 +89,44 @@ export function StarRating({ rating }: { rating: number }) {
       ))}
     </div>
   );
+}
+
+/**
+ * Resolves the numerical review count safely across various product schema conventions.
+ * Returns 0 if undefined, null, zero, empty, or unparseable.
+ */
+export function getProductReviewCount(item: Partial<ShopItemType> | any): number {
+  if (!item) return 0;
+
+  const candidates = [
+    item.reviewCount,
+    item.reviewsCount,
+    item.numReviews,
+    item.numOfReviews,
+    item.reviews,
+    item.ratingsQuantity,
+  ];
+
+  for (const c of candidates) {
+    if (typeof c === "number" && !isNaN(c) && c > 0) {
+      return c;
+    }
+    if (typeof c === "string") {
+      const parsed = parseInt(c, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    if (Array.isArray(c) && c.length > 0) {
+      return c.length;
+    }
+  }
+
+  if (Array.isArray(item.verifiedReviews) && item.verifiedReviews.length > 0) {
+    return item.verifiedReviews.length;
+  }
+
+  return 0;
 }
 
 export default function ShopItemCard({ item, index = 0 }: ShopItemCardProps) {
@@ -402,12 +442,21 @@ export default function ShopItemCard({ item, index = 0 }: ShopItemCardProps) {
         </p>
 
         {/* REVIEWS & RATING */}
-        <div className="flex items-center gap-1.5 mb-4 pointer-events-none">
-          <StarRating rating={item.rating} />
-          <span className="text-[11px] font-medium text-slate-500 font-sans">
-            {item.rating} <span className="text-slate-400">({item.reviews})</span>
-          </span>
-        </div>
+        {(() => {
+          const reviewCount = getProductReviewCount(item);
+          const displayRating = typeof item.rating === "number" && !isNaN(item.rating) ? item.rating : item.ratings || 5;
+          return (
+            <div className="flex items-center gap-1.5 mb-4 pointer-events-none">
+              <StarRating rating={displayRating} />
+              <span className="text-[11px] font-medium text-slate-500 font-sans">
+                {displayRating}
+                {reviewCount > 0 ? (
+                  <span className="text-slate-400"> ({reviewCount})</span>
+                ) : null}
+              </span>
+            </div>
+          );
+        })()}
 
         {/* FOOTER: PRICE & ACTION */}
         <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between gap-2">

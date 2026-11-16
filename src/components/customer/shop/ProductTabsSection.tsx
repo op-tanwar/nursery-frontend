@@ -1,5 +1,6 @@
 import ReviewForm from "@/components/customer/shop/ReviewForm";
 import ProductSpecifications from "@/components/customer/shop/ProductSpecifications";
+import { getProductReviewCount } from "@/components/customer/common/ShopItemCard";
 
 type TabId = "description" | "care" | "benefits" | "gallery" | "reviews";
 
@@ -85,7 +86,10 @@ export default function ProductTabsSection({
             {tab === "care" && careTabLabel}
             {tab === "benefits" && benefitsTabLabel}
             {tab === "gallery" && "Asset Gallery Canvas"}
-            {tab === "reviews" && `Verified Reviews (${item.reviews || 0})`}
+            {tab === "reviews" && (() => {
+              const reviewCount = getProductReviewCount(item);
+              return reviewCount > 0 ? `Verified Reviews (${reviewCount})` : "Verified Reviews";
+            })()}
 
             {activeTab === tab && (
               <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand-primary rounded-t-full" />

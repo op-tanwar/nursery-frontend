@@ -10,7 +10,7 @@ import { RootState } from "@/redux/store";
 import { cartActionSuccess, setCartError } from "@/redux/slices/cartSlice";
 import { wishlistToggleSuccess, setWishlistError, clearWishlistData } from "@/redux/slices/wishlistSlice";
 import { cartService, wishlistService } from "@/services/cartWishlistService";
-import { StarRating } from "@/components/customer/common/ShopItemCard";
+import { StarRating, getProductReviewCount } from "@/components/customer/common/ShopItemCard";
 
 export default function WishlistPage() {
   const dispatch = useDispatch();
@@ -251,10 +251,21 @@ export default function WishlistPage() {
                         </Link>
                       </h3>
 
-                      <div className="flex items-center gap-1 mt-1 mb-3">
-                        <StarRating rating={item.rating || 5} />
-                        <span className="text-xs text-muted-text">({item.reviews || 0})</span>
-                      </div>
+                      {(() => {
+                        const reviewCount = getProductReviewCount(item);
+                        const ratingVal = item.rating || 5;
+                        return (
+                          <div className="flex items-center gap-1.5 mt-1 mb-3">
+                            <StarRating rating={ratingVal} />
+                            <span className="text-xs font-medium text-slate-500 font-sans">
+                              {ratingVal}
+                              {reviewCount > 0 ? (
+                                <span className="text-slate-400"> ({reviewCount})</span>
+                              ) : null}
+                            </span>
+                          </div>
+                        );
+                      })()}
 
                       <div className="flex items-baseline gap-2 mb-4">
                         <span className="text-lg font-extrabold text-brand-primary">

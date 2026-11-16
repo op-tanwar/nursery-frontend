@@ -34,6 +34,7 @@ import { RootState } from "@/redux/store";
 import { cartActionSuccess, setCartError, addToGuestCartAction } from "@/redux/slices/cartSlice";
 import { cartService } from "@/services/cartWishlistService";
 import { normalizeItemModel } from "@/utils/guestCart";
+import { getProductReviewCount } from "@/components/customer/common/ShopItemCard";
 
 interface ProductInfoSectionProps {
   id: string;
@@ -371,11 +372,27 @@ export default function ProductInfoSection({
 
       {/* Rating & Nursery Sub-header */}
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 pb-4 mb-5 text-xs">
-        <div className="flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/60">
-          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-          <span className="font-bold text-slate-800">{rating}</span>
-          <span className="text-slate-400 font-medium">({reviews} reviews)</span>
-        </div>
+        {(() => {
+          const reviewCount = getProductReviewCount({
+            reviews,
+            reviewsCount: item?.reviewsCount,
+            numReviews: item?.numReviews,
+            numOfReviews: item?.numOfReviews,
+            ratingsQuantity: item?.ratingsQuantity,
+            verifiedReviews: item?.verifiedReviews,
+          });
+          return (
+            <div className="flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/60">
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              <span className="font-bold text-slate-800">{rating}</span>
+              {reviewCount > 0 ? (
+                <span className="text-slate-400 font-medium">
+                  ({reviewCount} {reviewCount === 1 ? "review" : "reviews"})
+                </span>
+              ) : null}
+            </div>
+          );
+        })()}
         <span className="text-slate-200">|</span>
         <div className="flex items-center gap-1.5 text-slate-600 font-medium">
           <Building2 className="w-3.5 h-3.5 text-emerald-600" />
