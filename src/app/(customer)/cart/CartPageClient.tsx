@@ -19,6 +19,9 @@ import {
 import { cartService } from "@/services/cartWishlistService";
 import { calculateCartTotals, getEffectivePrice, CategoryTaxConfig, normalizeTaxCategory } from "@/utils/pricing";
 import { taxService } from "@/services/taxService";
+import { getGuestCart, saveGuestCart, formatGuestCartToICart, IGuestCartItem } from "@/utils/guestCart";
+import { isNurseryActive } from "@/utils/nurseryValidation";
+import { productService } from "@/services/productService";
 
 interface ProductImage {
   url: string;
@@ -63,6 +66,70 @@ export default function CartPage() {
         if (!isAuthenticated) {
           // 🛒 Guest Cart Mode: Load from localStorage without triggering 401
           dispatch(loadGuestCart());
+
+          // Re-validate guest items with backend in background to ensure fresh stock and vendor status
+          const guestItems = getGuestCart();
+          if (guestItems.length > 0) {
+            try {
+              let hasChanges = false;
+              const updatedItems: IGuestCartItem[] = await Promise.all(
+                guestItems.map(async (item): Promise<IGuestCartItem> => {
+                  const prodId = item.product?._id || (item.product as any)?.id;
+                  if (!prodId) return item;
+                  try {
+                    const res = await productService.getProductByIdOrSlug(prodId);
+                    const freshProd = res?.product || ((res as any)?._id ? res : null);
+                    if (freshProd) {
+                      const vendorActive = isNurseryActive(freshProd.nursery) && freshProd.isNurseryActive !== false;
+                      const isAvail =
+                        freshProd.isActive !== false &&
+                        freshProd.isPublished !== false &&
+                        vendorActive &&
+                        (freshProd.stock || 0) > 0;
+                      const unavailReason: "NURSERY_INACTIVE" | "OUT_OF_STOCK" | "PRODUCT_DISABLED" = !vendorActive
+                        ? "NURSERY_INACTIVE"
+                        : (freshProd.stock || 0) <= 0
+                        ? "OUT_OF_STOCK"
+                        : "PRODUCT_DISABLED";
+
+                      hasChanges = true;
+                      return {
+                        ...item,
+                        product: {
+                          ...item.product,
+                          name: freshProd.name || item.product.name,
+                          price: freshProd.price || item.product.price,
+                          discountPrice: freshProd.discountPrice,
+                          stock: freshProd.stock ?? item.product.stock,
+                          isNurseryActive: freshProd.isNurseryActive,
+                        } as any,
+                        isAvailable: isAvail,
+                        unavailableReason: isAvail ? undefined : unavailReason,
+                      };
+                    }
+                  } catch (lookupErr: any) {
+                    if (lookupErr?.response?.status === 404 || lookupErr?.status === 404) {
+                      hasChanges = true;
+                      return {
+                        ...item,
+                        isAvailable: false,
+                        unavailableReason: "NURSERY_INACTIVE",
+                      };
+                    }
+                  }
+                  return item;
+                })
+              );
+
+              if (hasChanges) {
+                saveGuestCart(updatedItems);
+                const formatted = formatGuestCartToICart(updatedItems);
+                dispatch(cartActionSuccess({ cart: formatted }));
+              }
+            } catch (validationErr) {
+              console.warn("Guest cart background validation skipped:", validationErr);
+            }
+          }
           return;
         }
 
@@ -107,7 +174,17 @@ export default function CartPage() {
   }, [dispatch, isAuthenticated]);
 
   const items = useMemo(() => {
-    return ((cart?.items || []) as CartItem[]).filter((i) => Boolean(i.product));
+    return ((cart?.items || []) as CartItem[]).filter((i) => {
+      if (!i.product) return false;
+      // 🛡️ Completely filter out items from suspended/inactive nurseries (never show in cart)
+      if (i.unavailableReason === "NURSERY_INACTIVE") return false;
+      if ((i.product as any).isNurseryActive === false) return false;
+      const prodNursery = (i.product as any).nursery;
+      if (prodNursery && !isNurseryActive(prodNursery)) return false;
+      const itemNursery = (i as any).nursery;
+      if (itemNursery && !isNurseryActive(itemNursery)) return false;
+      return true;
+    });
   }, [cart?.items]);
 
   // Authoritative paise-safe client calculation: EXCLUDES items where isAvailable === false

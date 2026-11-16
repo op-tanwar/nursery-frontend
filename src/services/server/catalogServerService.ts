@@ -302,8 +302,12 @@ export async function getFeaturedPlantsServer(limit = 4): Promise<ShopItemType[]
         return [];
       }
 
-      console.log(`[getFeaturedPlantsServer] ✓ ${plants.length} plants fetched, returning ${Math.min(plants.length, limit)}`);
-      return plants.slice(0, limit).map(mapRawPlantToShopItem);
+      const activePlants = plants.filter(
+        (p: any) => p && p.isNurseryActive !== false && p.isActive !== false && p.isPublished !== false
+      );
+
+      console.log(`[getFeaturedPlantsServer] ✓ ${activePlants.length} active plants fetched, returning ${Math.min(activePlants.length, limit)}`);
+      return activePlants.slice(0, limit).map(mapRawPlantToShopItem);
     } catch (error: any) {
       console.error(
         "[getFeaturedPlantsServer] Unexpected fetch error:",
@@ -343,8 +347,12 @@ export async function getFeaturedPotsServer(limit = 4): Promise<ShopItemType[]> 
         return [];
       }
 
-      console.log(`[getFeaturedPotsServer] ✓ ${pots.length} pots fetched, returning ${Math.min(pots.length, limit)}`);
-      return pots.slice(0, limit).map(mapRawPotToShopItem);
+      const activePots = pots.filter(
+        (p: any) => p && p.isNurseryActive !== false && p.isActive !== false && p.isPublished !== false
+      );
+
+      console.log(`[getFeaturedPotsServer] ✓ ${activePots.length} active pots fetched, returning ${Math.min(activePots.length, limit)}`);
+      return activePots.slice(0, limit).map(mapRawPotToShopItem);
     } catch (error: any) {
       console.error(
         "[getFeaturedPotsServer] Unexpected fetch error:",

@@ -34,6 +34,8 @@ export interface IGuestCartItem {
   itemModel: string;
   quantity: number;
   nursery?: string;
+  isAvailable?: boolean;
+  unavailableReason?: "NURSERY_INACTIVE" | "OUT_OF_STOCK" | "PRODUCT_DISABLED";
 }
 
 /**
@@ -141,6 +143,8 @@ export function formatGuestCartToICart(items: IGuestCartItem[]): ICart {
       itemModel: (normalizeItemModel(item.itemModel) as any),
       quantity: Math.max(1, Number(item.quantity) || 1),
       nursery: item.nursery || "",
+      isAvailable: item.isAvailable !== false,
+      unavailableReason: item.unavailableReason,
     };
   });
 
@@ -196,6 +200,8 @@ export function addToGuestCart(itemData: {
     };
     if (itemData.itemModel) existing.itemModel = itemData.itemModel;
     if (itemData.nursery) existing.nursery = itemData.nursery;
+    existing.isAvailable = true;
+    existing.unavailableReason = undefined;
   } else {
     isNew = true;
     const finalQty = Math.min(requestedQty, maxStock);
@@ -209,6 +215,8 @@ export function addToGuestCart(itemData: {
       quantity: finalQty,
       itemModel: itemData.itemModel || "Plant",
       nursery: itemData.nursery || "",
+      isAvailable: true,
+      unavailableReason: undefined,
     });
     message = `${finalQty} × ${itemData.product.name} added to cart!`;
   }

@@ -652,7 +652,7 @@ export async function getRelatedProductsServer(
   try {
     const category = URL_TYPE_TO_CATEGORY[shopType] || shopType;
     const res = await fetchWithRetry<any>(`/products?category=${category}&limit=${limit + 2}`, {
-      revalidate: 120,
+      revalidate: 60,
       tags: [`related-${shopType}`],
       timeoutMs: 8000,
     });
@@ -670,6 +670,7 @@ export async function getRelatedProductsServer(
         (p: any) =>
           p.isNurseryActive !== false &&
           p.isPublished !== false &&
+          p.isActive !== false &&
           (p._id !== currentIdOrSlug && p.slug !== currentIdOrSlug && p.id !== currentIdOrSlug)
       )
       .slice(0, limit);

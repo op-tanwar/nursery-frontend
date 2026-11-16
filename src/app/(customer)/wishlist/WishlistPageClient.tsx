@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useDispatch, useSelector } from "react-redux";
@@ -11,6 +11,7 @@ import { cartActionSuccess, setCartError } from "@/redux/slices/cartSlice";
 import { wishlistToggleSuccess, setWishlistError, clearWishlistData } from "@/redux/slices/wishlistSlice";
 import { cartService, wishlistService } from "@/services/cartWishlistService";
 import { StarRating, getProductReviewCount } from "@/components/customer/common/ShopItemCard";
+import { isNurseryActive } from "@/utils/nurseryValidation";
 
 export default function WishlistPage() {
   const dispatch = useDispatch();
@@ -40,7 +41,21 @@ export default function WishlistPage() {
 
   // Safely extracting array matching your multi-product schema
   const currentWishlist = wishlist as any;
-  const wishlistItems = currentWishlist?.items || currentWishlist?.plants || (Array.isArray(wishlist) ? wishlist : []);
+  const rawWishlistItems = currentWishlist?.items || currentWishlist?.plants || (Array.isArray(wishlist) ? wishlist : []);
+
+  // 🛡️ Defense-in-depth: Exclude items belonging to inactive or suspended nurseries
+  const wishlistItems = useMemo(() => {
+    return rawWishlistItems.filter((wItem: any) => {
+      if (!wItem) return false;
+      const item = wItem.product || wItem.plant || (wItem.name ? wItem : null);
+      if (!item) return false;
+      if (item.isNurseryActive === false) return false;
+      if (item.isActive === false || item.isPublished === false) return false;
+      if (item.nursery && !isNurseryActive(item.nursery)) return false;
+      return true;
+    });
+  }, [rawWishlistItems]);
+
   const wishlistCount = wishlistItems.length;
   const hasItems = wishlistCount > 0;
 
