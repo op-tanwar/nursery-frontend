@@ -422,7 +422,7 @@ export default function ShopItemCard({ item, index = 0 }: ShopItemCardProps) {
                 </span>
               )}
             </div>
-            <span className="text-[10px] text-slate-400 font-medium">+ GST at checkout</span>
+            {/* <span className="text-[10px] text-slate-400 font-medium">+ GST at checkout</span> */}
           </div>
 
           {/* ADD TO CART ACTION BAR (Elevated z-20 to sit above stretched link overlay) */}
