@@ -683,20 +683,24 @@ export default function CheckoutPage() {
                         <div className="flex items-center gap-3 truncate">
                           <div className="h-12 w-12 relative rounded-lg bg-background flex-shrink-0 border border-line/40 overflow-hidden flex items-center justify-center">
                             {product.images?.[0]?.url || product.coverImage?.url ? (
-                              <Image
-                                src={product.images?.[0]?.url || product.coverImage?.url}
-                                alt={product.name}
-                                fill
-                                sizes="48px"
-                                className="object-contain p-1"
-                                unoptimized={true}
-                              />
+                              <Link href={`/product/${product._id}`} className="absolute inset-0">
+                                <Image
+                                  src={product.images?.[0]?.url || product.coverImage?.url}
+                                  alt={product.name}
+                                  fill
+                                  sizes="48px"
+                                  className="object-contain p-1"
+                                  unoptimized={true}
+                                />
+                              </Link>
                             ) : (
                               <span className="text-lg">📦</span>
                             )}
                           </div>
                           <div className="truncate">
-                            <p className="font-semibold text-foreground truncate m-0 max-w-[160px]">{product.name}</p>
+                            <Link href={`/product/${product._id}`}>
+                              <p className="font-semibold text-foreground hover:text-brand-primary transition-colors duration-200 truncate m-0 max-w-[160px]">{product.name}</p>
+                            </Link>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <span className="text-xs text-muted-text">Qty: {item.quantity}</span>
                               {hasItemDiscount && (

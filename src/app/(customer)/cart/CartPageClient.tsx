@@ -89,8 +89,8 @@ export default function CartPage() {
                       const unavailReason: "NURSERY_INACTIVE" | "OUT_OF_STOCK" | "PRODUCT_DISABLED" = !vendorActive
                         ? "NURSERY_INACTIVE"
                         : (freshProd.stock || 0) <= 0
-                        ? "OUT_OF_STOCK"
-                        : "PRODUCT_DISABLED";
+                          ? "OUT_OF_STOCK"
+                          : "PRODUCT_DISABLED";
 
                       hasChanges = true;
                       return {
@@ -357,32 +357,35 @@ export default function CartPage() {
                 return (
                   <div
                     key={product._id || index}
-                    className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-panel border border-line rounded-[20px] transition-all duration-200 hover:border-line/80 gap-4 relative ${
-                      isItemMutating ? "pointer-events-none opacity-60" : ""
-                    }`}
+                    className={`flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 bg-panel border border-line rounded-[20px] transition-all duration-200 hover:border-line/80 gap-4 relative ${isItemMutating ? "pointer-events-none opacity-60" : ""
+                      }`}
                   >
                     <div className="flex items-center gap-4 w-full sm:w-auto">
                       <div className="h-20 w-20 relative rounded-xl bg-brand-light/40 flex-shrink-0 flex items-center justify-center overflow-hidden border border-line/40">
                         {isImageUrl ? (
-                          <Image
-                            src={imgSource}
-                            alt={product.name}
-                            fill
-                            sizes="80px"
-                            className="object-contain p-2"
-                          />
+                          <Link href={`/product/${product._id}`} className="absolute inset-0">
+                            <Image
+                              src={imgSource}
+                              alt={product.name}
+                              fill
+                              sizes="80px"
+                              className="object-contain p-2"
+                            />
+                          </Link>
                         ) : (
                           <span className="text-3xl select-none">📦</span>
                         )}
                       </div>
                       <div className="truncate">
-                        <h3 className="text-base font-bold text-foreground truncate max-w-[200px] sm:max-w-xs m-0">
-                          {product.name}
-                        </h3>
+                        <Link href={`/product/${product._id}`} className="">
+                          <h3 className="text-base hover:text-brand-primary transition-all duration-300 font-bold text-foreground truncate max-w-[200px] sm:max-w-xs m-0">
+                            {product.name}
+                          </h3>
+                        </Link>
                         <p className="text-xs text-muted-text mt-1 capitalize m-0">
                           Category: <span className="text-foreground/80 font-medium">{item.itemModel || "Item"}</span>
                         </p>
-                        
+
                         {/* Price Breakdown per Item */}
                         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                           <span className="text-sm font-extrabold text-brand-primary">
@@ -406,8 +409,8 @@ export default function CartPage() {
                             {item.unavailableReason === "NURSERY_INACTIVE"
                               ? "Vendor Temporarily Inactive"
                               : item.unavailableReason === "OUT_OF_STOCK"
-                              ? "Out of Stock"
-                              : "Product Unavailable"}
+                                ? "Out of Stock"
+                                : "Product Unavailable"}
                           </div>
                         )}
                       </div>
