@@ -50,6 +50,7 @@ export interface ServerProductData {
 
   // Category-specific specifications
   stock?: number;
+  attributes?: Record<string, any>;
   lightRequirement?: string;
   wateringSchedule?: string;
   maintenanceLevel?: string;

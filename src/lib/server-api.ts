@@ -629,6 +629,7 @@ export const getProductDetailServer = cache(async function getProductDetailServe
     quantityPerPack: raw.quantityPerPack || attrs.quantityPerPack,
     tierCount: raw.tierCount || attrs.tierCount,
     maxLoadCapacity: raw.maxLoadCapacity || attrs.maxLoadCapacity || maxLoadMatch,
+    attributes: attrs,
     specifications: raw.specifications || attrs,
     rawSpecifications: raw,
   };

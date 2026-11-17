@@ -68,31 +68,22 @@ function toStringArray(value: unknown): string[] {
 function extractCareInstructions(raw: any, attrs: any = {}): string[] {
   const candidates = [
     raw.careInstructions, attrs.careInstructions, raw.howToUse, attrs.howToUse,
-    raw.dosageInstructions, raw.tips, raw.sowingSteps, raw.assemblyInstructions, raw.features,
+    raw.dosageInstructions, raw.tips, raw.sowingSteps, raw.assemblyInstructions,
   ];
   for (const c of candidates) {
     const arr = toStringArray(c);
     if (arr.length) return arr;
   }
-  if (raw.shortDescription) return [String(raw.shortDescription)];
-  if (raw.description) return [String(raw.description).slice(0, 240)];
-  return ["See product description for usage details."];
+  return [];
 }
 
 function extractBenefits(raw: any, attrs: any = {}): string[] {
-  const candidates = [raw.benefits, attrs.benefits, raw.features, attrs.features, raw.ingredients];
+  const candidates = [raw.benefits, attrs.benefits, raw.features, attrs.features, raw.keyFeatures, raw.highlights];
   for (const c of candidates) {
     const arr = toStringArray(c);
     if (arr.length) return arr;
   }
-  const bits: string[] = [];
-  if (attrs.sowingSeason || raw.sowingSeason) bits.push(`Sowing season: ${attrs.sowingSeason || raw.sowingSeason}`);
-  if (attrs.material || raw.material) bits.push(`Material: ${attrs.material || raw.material}`);
-  if (attrs.composition || raw.composition) bits.push(`Composition: ${attrs.composition || raw.composition}`);
-  if (attrs.formType || raw.formType) bits.push(`Form: ${attrs.formType || raw.formType}`);
-  if (attrs.netQuantity || raw.netQuantity) bits.push(`Net quantity: ${attrs.netQuantity || raw.netQuantity}`);
-  if (bits.length) return bits;
-  return ["Premium quality marketplace selection."];
+  return [];
 }
 
 function extractRawProduct(res: any, targetType: ShopUrlType): any {
@@ -332,6 +323,7 @@ export default function ProductDetailClient({
         quantityPerPack: rawProduct.quantityPerPack || attrs.quantityPerPack,
         tierCount: rawProduct.tierCount || attrs.tierCount,
         maxLoadCapacity: rawProduct.maxLoadCapacity || attrs.maxLoadCapacity || maxLoadMatch,
+        attributes: attrs,
         specifications: rawProduct.specifications || attrs,
         rawSpecifications: rawProduct,
       };
