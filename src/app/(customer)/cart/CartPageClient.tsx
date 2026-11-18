@@ -22,6 +22,7 @@ import { taxService } from "@/services/taxService";
 import { getGuestCart, saveGuestCart, formatGuestCartToICart, IGuestCartItem } from "@/utils/guestCart";
 import { isNurseryActive } from "@/utils/nurseryValidation";
 import { productService } from "@/services/productService";
+import { getProductUrl } from "@/utils/productUrl";
 
 interface ProductImage {
   url: string;
@@ -33,6 +34,8 @@ interface Product {
   price: number;
   discountPrice?: number;
   category?: string;
+  itemModel?: string;
+  slug?: string;
   stock: number;
   images?: ProductImage[];
   coverImage?: ProductImage;
@@ -353,7 +356,7 @@ export default function CartPage() {
                 const imgSource = product.images?.[0]?.url || product.coverImage?.url || "";
                 const isImageUrl = imgSource.startsWith("http") || imgSource.startsWith("/");
                 const isItemMutating = processingId === product._id;
-
+                const shopUrl = getProductUrl(item);
                 return (
                   <div
                     key={product._id || index}
@@ -363,7 +366,7 @@ export default function CartPage() {
                     <div className="flex items-center gap-4 w-full sm:w-auto">
                       <div className="h-20 w-20 relative rounded-xl bg-brand-light/40 flex-shrink-0 flex items-center justify-center overflow-hidden border border-line/40">
                         {isImageUrl ? (
-                          <Link href={`/product/${product._id}`} className="absolute inset-0">
+                          <Link href={shopUrl} className="absolute inset-0">
                             <Image
                               src={imgSource}
                               alt={product.name}
@@ -377,7 +380,7 @@ export default function CartPage() {
                         )}
                       </div>
                       <div className="truncate">
-                        <Link href={`/product/${product._id}`} className="">
+                        <Link href={shopUrl} className="">
                           <h3 className="text-base hover:text-brand-primary transition-all duration-300 font-bold text-foreground truncate max-w-[200px] sm:max-w-xs m-0">
                             {product.name}
                           </h3>

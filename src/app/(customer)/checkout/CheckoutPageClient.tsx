@@ -21,7 +21,7 @@ import {
 import { calculateCartTotals, getEffectivePrice, CategoryTaxConfig, normalizeTaxCategory } from "@/utils/pricing";
 import { taxService } from "@/services/taxService";
 import { couponService } from "@/services/couponService";
-
+import { getProductUrl } from "@/utils/productUrl";
 interface RazorpayOptions {
   key: string;
   amount: number;
@@ -664,9 +664,14 @@ export default function CheckoutPage() {
 
             <div className="lg:col-span-5 lg:sticky lg:top-[90px] space-y-4">
               <div className="bg-panel border border-line rounded-2xl p-6 shadow-xs">
-                <div className="flex items-center gap-2 mb-4 border-b border-line pb-3">
-                  <ShoppingBag className="w-[18px] h-[18px] text-slate-500" />
-                  <h3 className="text-base font-bold m-0">Order Summary ({totals.itemsCount} items)</h3>
+                <div className="flex items-center justify-between mb-4 border-b border-line pb-3">
+                  <div className="flex items-center gap-2">
+                    <ShoppingBag className="w-[18px] h-[18px] text-slate-500" />
+                    <h3 className="text-base font-bold m-0">Order Summary ({totals.itemsCount} items)</h3>
+                  </div>
+                  <Link href="/cart" className="text-xs text-brand-primary hover:text-brand-dark font-semibold transition-colors">
+                    Edit Cart
+                  </Link>
                 </div>
 
                 <div className="max-h-64 overflow-y-auto mb-4 space-y-3 pr-1 divide-y divide-line/40">
@@ -677,13 +682,14 @@ export default function CheckoutPage() {
                     const effectivePrice = getEffectivePrice(product.price, product.discountPrice);
                     const hasItemDiscount = Boolean(product.discountPrice && product.discountPrice > 0 && product.discountPrice < product.price);
                     const productId = product._id || product.id;
+                    const shopUrl = getProductUrl(item);
 
                     return (
                       <div key={productId} className="flex items-center justify-between gap-4 text-sm pt-3 first:pt-0">
                         <div className="flex items-center gap-3 truncate">
                           <div className="h-12 w-12 relative rounded-lg bg-background flex-shrink-0 border border-line/40 overflow-hidden flex items-center justify-center">
                             {product.images?.[0]?.url || product.coverImage?.url ? (
-                              <Link href={`/product/${product._id}`} className="absolute inset-0">
+                              <Link href={shopUrl} className="absolute inset-0">
                                 <Image
                                   src={product.images?.[0]?.url || product.coverImage?.url}
                                   alt={product.name}
@@ -698,7 +704,7 @@ export default function CheckoutPage() {
                             )}
                           </div>
                           <div className="truncate">
-                            <Link href={`/product/${product._id}`}>
+                            <Link href={shopUrl}>
                               <p className="font-semibold text-foreground hover:text-brand-primary transition-colors duration-200 truncate m-0 max-w-[160px]">{product.name}</p>
                             </Link>
                             <div className="flex items-center gap-1.5 mt-0.5">
