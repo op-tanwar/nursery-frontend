@@ -97,6 +97,7 @@ export interface ShopCatalogClientProps {
   initialType?: string;
   initialCategory?: string;
   initialSearch?: string;
+  initialSort?: string;
   initialProducts?: ShopItemType[];
   initialRawProducts?: any[];
   initialTotalCount?: number;
@@ -109,6 +110,7 @@ export default function ShopCatalogClient({
   initialType,
   initialCategory,
   initialSearch,
+  initialSort,
   initialProducts,
   initialRawProducts,
   initialTotalCount,
@@ -139,7 +141,15 @@ export default function ShopCatalogClient({
   const [activeSubCategory, setActiveSubCategory] = useState<string>(() => initialCategory || "All");
   const [searchQuery, setSearchQuery] = useState(() => initialSearch || "");
   const [debouncedSearch, setDebouncedSearch] = useState(() => initialSearch || "");
-  const [priceSort, setPriceSort] = useState<SortOption>("default");
+  const [priceSort, setPriceSort] = useState<SortOption>(() => {
+    const urlSort = searchParams.get("sort") || initialSort;
+    if (urlSort === "bestselling" || urlSort === "popular" || urlSort === "sales") return "bestselling";
+    if (urlSort === "price-asc" || urlSort === "lowToHigh" || urlSort === "price_asc") return "lowToHigh";
+    if (urlSort === "price-desc" || urlSort === "highToLow" || urlSort === "price_desc") return "highToLow";
+    if (urlSort === "rating" || urlSort === "top-rated" || urlSort === "highest-rated") return "rating";
+    if (urlSort === "newest") return "newest";
+    return "default";
+  });
   const [selectedTag, setSelectedTag] = useState<string>("All Tags");
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [userPincode, setUserPincode] = useState<string | null>(null);
@@ -183,8 +193,23 @@ export default function ShopCatalogClient({
       setDebouncedSearch("");
     }
 
+    const urlSort = searchParams.get("sort") || initialSort;
+    if (urlSort === "bestselling" || urlSort === "popular" || urlSort === "sales") {
+      setPriceSort("bestselling");
+    } else if (urlSort === "price-asc" || urlSort === "lowToHigh" || urlSort === "price_asc") {
+      setPriceSort("lowToHigh");
+    } else if (urlSort === "price-desc" || urlSort === "highToLow" || urlSort === "price_desc") {
+      setPriceSort("highToLow");
+    } else if (urlSort === "rating" || urlSort === "top-rated" || urlSort === "highest-rated") {
+      setPriceSort("rating");
+    } else if (urlSort === "newest") {
+      setPriceSort("newest");
+    } else if (urlSort === "featured" || urlSort === "default") {
+      setPriceSort("default");
+    }
+
     setCurrentPage(1);
-  }, [searchParams, initialType, initialCategory]);
+  }, [searchParams, initialType, initialCategory, initialSort]);
 
   // Hydration-safe localStorage read
   useEffect(() => {
@@ -215,6 +240,29 @@ export default function ShopCatalogClient({
     window.location.reload();
   }, []);
 
+  const handleSortChange = useCallback((newSort: SortOption) => {
+    setPriceSort(newSort);
+    setCurrentPage(1);
+
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (newSort === "default") {
+        url.searchParams.delete("sort");
+      } else {
+        const sortSlugMap: Record<SortOption, string> = {
+          default: "featured",
+          bestselling: "bestselling",
+          lowToHigh: "price-asc",
+          highToLow: "price-desc",
+          rating: "rating",
+          newest: "newest",
+        };
+        url.searchParams.set("sort", sortSlugMap[newSort] || newSort);
+      }
+      window.history.replaceState(null, "", url.toString());
+    }
+  }, []);
+
   const handleResetFilters = useCallback(() => {
     setSearchQuery("");
     setDebouncedSearch("");
@@ -228,6 +276,12 @@ export default function ShopCatalogClient({
     setMinRating(0);
     setCareLevel("All");
     setCurrentPage(1);
+
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("sort");
+      window.history.replaceState(null, "", url.toString());
+    }
   }, []);
 
   const handleCustomPriceApply = useCallback((min: string, max: string) => {
@@ -261,9 +315,19 @@ export default function ShopCatalogClient({
         dispatch(setProductLoading(true));
 
         const targetCategory = TAB_TO_CATEGORY[activeType];
+        const sortSlugMap: Record<SortOption, string> = {
+          default: "featured",
+          bestselling: "bestselling",
+          lowToHigh: "price-asc",
+          highToLow: "price-desc",
+          rating: "rating",
+          newest: "newest",
+        };
+
         const filters: Record<string, any> = {
           limit: activeType === "All" ? 48 : ITEMS_PER_PAGE,
           page: activeType === "All" ? 1 : currentPage,
+          sort: sortSlugMap[priceSort] || "featured",
         };
 
         if (targetCategory) {
@@ -304,7 +368,7 @@ export default function ShopCatalogClient({
     return () => {
       isMounted = false;
     };
-  }, [activeType, activeSubCategory, debouncedSearch, currentPage, dispatch, userPincode]);
+  }, [activeType, activeSubCategory, debouncedSearch, priceSort, currentPage, dispatch, userPincode]);
 
   // Product normalization mapping
   const mappedMarketItems = useMemo<ShopItemType[]>(() => {
@@ -470,7 +534,14 @@ export default function ShopCatalogClient({
     } else if (priceSort === "highToLow") {
       result.sort((a, b) => b.price - a.price);
     } else if (priceSort === "rating") {
-      result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      result.sort((a, b) => (b.rating || 0) - (a.rating || 0) || (b.reviews || 0) - (a.reviews || 0));
+    } else if (priceSort === "bestselling") {
+      result.sort((a, b) => {
+        const salesA = (a.totalSales ?? a.salesCount) || 0;
+        const salesB = (b.totalSales ?? b.salesCount) || 0;
+        if (salesB !== salesA) return salesB - salesA;
+        return (b.rating || 0) - (a.rating || 0);
+      });
     } else if (priceSort === "newest") {
       result.sort((a, b) => {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -736,7 +807,7 @@ export default function ShopCatalogClient({
               setCurrentPage(1);
             }}
             priceSort={priceSort}
-            onSortChange={setPriceSort}
+            onSortChange={handleSortChange}
             filters={filterValues}
             totalActiveCount={totalActiveFilterCount}
             onOpenMobileFilters={() => setIsMobileFilterOpen(true)}

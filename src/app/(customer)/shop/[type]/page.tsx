@@ -437,6 +437,7 @@ export default async function CategoryPage({
           <ShopCatalogClient
             initialType={category.mappedType}
             initialCategory={category.mappedCategory}
+            initialSort="featured"
             initialProducts={catalogData.products}
             initialRawProducts={catalogData.rawProducts}
             initialTotalCount={catalogData.totalCount}

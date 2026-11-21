@@ -406,10 +406,9 @@ export async function getShopProductsServer(
     query.set("maxPrice", String(params.maxPrice));
   }
 
-  // 6. Sorting
-  if (params.sort) {
-    query.set("sort", params.sort);
-  }
+  // 6. Sorting (Defaults to conversion-optimized featured mix)
+  const effectiveSort = params.sort || "featured";
+  query.set("sort", effectiveSort);
 
   // 7. Pincode
   if (params.pincode) {

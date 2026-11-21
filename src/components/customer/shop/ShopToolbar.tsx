@@ -13,7 +13,7 @@ import {
 import { ShopTabType } from "./ShopCategoryChips";
 import { ShopFilterValues } from "./ShopFilterSidebar";
 
-export type SortOption = "default" | "lowToHigh" | "highToLow" | "rating" | "newest";
+export type SortOption = "default" | "bestselling" | "lowToHigh" | "highToLow" | "rating" | "newest";
 
 export interface ActiveFilterChip {
   id: string;
@@ -105,6 +105,7 @@ export default function ShopToolbar({
                 className="w-full sm:w-auto h-11 bg-white border border-slate-200 rounded-xl pl-3 sm:pl-9 pr-8 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 cursor-pointer transition-all shadow-2xs appearance-none"
               >
                 <option value="default">Sort by: Featured</option>
+                <option value="bestselling">Best Sellers</option>
                 <option value="lowToHigh">Price: Low to High</option>
                 <option value="highToLow">Price: High to Low</option>
                 <option value="rating">Highest Rated</option>

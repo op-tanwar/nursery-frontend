@@ -157,6 +157,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
             initialType={resolvedParams.type}
             initialCategory={resolvedParams.category}
             initialSearch={resolvedParams.search || resolvedParams.keyword}
+            initialSort={resolvedParams.sort || "featured"}
             initialProducts={catalogData.products}
             initialRawProducts={catalogData.rawProducts}
             initialTotalCount={catalogData.totalCount}
