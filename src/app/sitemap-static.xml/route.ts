@@ -1,4 +1,5 @@
 import { SITE_URL } from "@/config/site";
+import { escapeXml } from "@/utils/sitemap";
 
 export const dynamic = "force-static";
 export const revalidate = 86400; // 24 hours
@@ -37,7 +38,7 @@ export async function GET() {
 ${staticUrls
   .map(
     (item) => `  <url>
-    <loc>${item.loc}</loc>
+    <loc>${escapeXml(item.loc)}</loc>
     <lastmod>${currentDate}</lastmod>
     <changefreq>${item.changefreq}</changefreq>
     <priority>${item.priority}</priority>
@@ -47,6 +48,7 @@ ${staticUrls
 </urlset>`;
 
   return new Response(xml, {
+    status: 200,
     headers: {
       "Content-Type": "application/xml; charset=utf-8",
       "Cache-Control": "public, max-age=86400, stale-while-revalidate=43200",

@@ -1,9 +1,9 @@
 import { SITE_URL } from "@/config/site";
+import { escapeXml, formatLastmod, getApiBaseUrl } from "@/utils/sitemap";
 
 export const revalidate = 7200; // 2 hours
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://nursery-backend-2rg3.onrender.com/api/v1";
+const API_BASE_URL = getApiBaseUrl();
 
 interface VendorItem {
   slug: string;
@@ -21,7 +21,7 @@ const FALLBACK_VENDORS: VendorItem[] = [
 async function fetchVerifiedVendors(): Promise<VendorItem[]> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     const res = await fetch(`${API_BASE_URL}/nursery-profile/all?status=approved`, {
       next: { revalidate: 7200 },
@@ -61,9 +61,10 @@ export async function GET() {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${vendors
       .map((v) => {
-        const lastmod = v.updatedAt ? new Date(v.updatedAt).toISOString().split("T")[0] : fallbackDate;
+        const loc = `${SITE_URL}/vendor/${v.slug}`;
+        const lastmod = formatLastmod(v.updatedAt || fallbackDate);
         return `  <url>
-    <loc>${SITE_URL}/vendor/${v.slug}</loc>
+    <loc>${escapeXml(loc)}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -73,6 +74,7 @@ ${vendors
 </urlset>`;
 
   return new Response(xml, {
+    status: 200,
     headers: {
       "Content-Type": "application/xml; charset=utf-8",
       "Cache-Control": "public, max-age=7200, stale-while-revalidate=3600",
