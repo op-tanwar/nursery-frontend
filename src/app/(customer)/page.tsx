@@ -32,6 +32,7 @@ const TestimonialsCarousel = dynamic(
 
 // ─── Static Page Metadata (SEO & OpenGraph) ────────────────────────────────
 export const metadata: Metadata = {
+  applicationName: "Urban Nursery",
   title: "Urban Nursery | Premium Plants, Delivered Alive",
   description:
     "India's first certified multi-vendor plant marketplace. 1,200+ botanist-verified plants from local nurseries delivered with eco-packaging across India.",

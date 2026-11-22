@@ -46,14 +46,16 @@ export function OrganizationJsonLd() {
 }
 
 // ======================================================================
-// 2. WebSite & SearchAction Schema (Google Sitelinks Searchbox)
+// 2. WebSite & SearchAction Schema (Google Site Name & Sitelinks Searchbox)
 // ======================================================================
 export function WebSiteJsonLd() {
+  const rootUrl = SITE_URL.endsWith("/") ? SITE_URL : `${SITE_URL}/`;
   const schema = {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: "Urban Nursery",
-    url: SITE_URL,
+    alternateName: ["UrbanNursery", "Urban Nursery India"],
+    url: rootUrl,
     potentialAction: {
       "@type": "SearchAction",
       target: {

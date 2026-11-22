@@ -6,7 +6,14 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        allow: [
+          "/",
+          "/favicon.ico",
+          "/icon-48x48.png",
+          "/icon-96x96.png",
+          "/icon-192x192.png",
+          "/apple-touch-icon.png",
+        ],
         disallow: [
           "/admin/",
           "/nursery/",
@@ -15,6 +22,16 @@ export default function robots(): MetadataRoute.Robots {
           "/checkout/",
           "/orders/",
           "/cart",
+        ],
+      },
+      {
+        userAgent: "Googlebot-Image",
+        allow: [
+          "/",
+          "/favicon.ico",
+          "/icon-*.png",
+          "/apple-touch-icon.png",
+          "/images/",
         ],
       },
     ],
