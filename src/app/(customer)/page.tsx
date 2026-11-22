@@ -61,6 +61,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: SITE_URL,
   },
+  verification: {
+    google: "BvhspkTjlLomtVx352jX7jaNc33hgCYSlca74BcNCKA",
+  },
 };
 
 // ─── Homepage RSC ──────────────────────────────────────────────────────────
